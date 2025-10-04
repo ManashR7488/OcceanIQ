@@ -11,6 +11,10 @@ import Home from "./pages/Home/Home";
 import useAuthStore from "./store/useAuthStore";
 import Help from "./pages/Help/Help";
 import NotFound from "./pages/Notfound/NotFound";
+import Map from "./pages/Map/Map";
+import Section1 from "./pages/Map/Section1";
+import Section2 from "./pages/Map/Section2";
+import Section3 from "./pages/Map/Section3";
 
 const App = () => {
   const { user, checkAuth } = useAuthStore();
@@ -34,6 +38,18 @@ const App = () => {
             path="dashboard"
             element={user ? <Dashboard /> : <Navigate to="/app/auth/login" />}
           />
+
+          {/* features pages */}
+
+          <Route
+            path="map"
+            element={user ? <Map /> : <Navigate to="/app/auth/login" />}
+          >
+            <Route index element={<Navigate to="section1" replace />} />
+            <Route path="section1" element={<Section1 />} />
+            <Route path="section2" element={<Section2 />} />
+            <Route path="section3" element={<Section3 />} />
+          </Route>
 
           {/* Authentication Routes */}
           <Route

@@ -1,0 +1,63 @@
+/* Import Leaflet core CSS */
+@import 'leaflet/dist/leaflet.css';
+
+/* Fix Leaflet marker icon paths (Vite compatibility) */
+.leaflet-default-icon-path {
+  background-image: url('https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png');
+}
+
+/* Custom cluster styles for OcceanIQ theme */
+.marker-cluster-small {
+  background-color: rgba(59, 130, 246, 0.6);
+}
+
+.marker-cluster-small div {
+  background-color: rgba(59, 130, 246, 0.8);
+  color: white;
+  font-weight: 600;
+}
+
+.marker-cluster-medium {
+  background-color: rgba(99, 102, 241, 0.6);
+}
+
+.marker-cluster-medium div {
+  background-color: rgba(99, 102, 241, 0.8);
+  color: white;
+  font-weight: 600;
+}
+
+.marker-cluster-large {
+  background-color: rgba(79, 70, 229, 0.6);
+}
+
+.marker-cluster-large div {
+  background-color: rgba(79, 70, 229, 0.8);
+  color: white;
+  font-weight: 600;
+}
+
+/* Custom popup styles */
+.leaflet-popup-content-wrapper {
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.leaflet-popup-content {
+  margin: 12px;
+  font-family: inherit;
+}
+
+/* Map container */
+.leaflet-container {
+  font-family: inherit;
+  border-radius: 8px;
+}
+
+/* Velocity layer controls */
+.leaflet-control-velocity {
+  background: white;
+  border-radius: 8px;
+  padding: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}

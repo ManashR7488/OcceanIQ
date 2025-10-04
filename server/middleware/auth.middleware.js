@@ -46,3 +46,26 @@ export const protect = async (req, res, next) => {
     return res.status(401).json({ message: "Invalid or expired token." });
   }
 };
+
+export const verifyToken = async (req, res, next) => {
+  const token = req.cookies?.[COOKIE_NAME];
+
+  if (!token) {
+    return res.status(401).json({ message: "Unauthorized. Token missing." });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await User.findById(decoded.id).select("-password"); // remove password
+
+    if (!user) {
+      return res.status(401).json({ message: "User not found." });
+    }
+
+    req.user = user; // attach to request
+    next();
+  } catch (err) {
+    console.log(err, "auth protect middleware");
+    return res.status(401).json({ message: "Invalid or expired token." });
+  }
+};

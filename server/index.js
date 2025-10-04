@@ -6,6 +6,7 @@ import cors from "cors";
 
 
 import authRoute from "./routes/auth.route.js";
+import mapRoute from './routes/map.route.js';
 import connectDB from "./config/db.js";
 import e from "express";
 
@@ -57,6 +58,7 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/auth", authRoute);
+app.use('/api/map', mapRoute);
 
 
 app.listen(PORT, async () => {
