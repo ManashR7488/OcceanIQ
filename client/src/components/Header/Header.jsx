@@ -8,7 +8,7 @@ import {
   FiHelpCircle,
   FiEdit
 } from 'react-icons/fi';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/useAuthStore';
 
 const Header = () => {
@@ -16,7 +16,8 @@ const Header = () => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [notifications, setNotifications] = useState([]);
   
-  const { user, logout } = useAuthStore();
+  const { user, logout, isLoading } = useAuthStore();
+  const navigate = useNavigate();
   const notificationRef = useRef(null);
   const profileRef = useRef(null);
 
@@ -84,6 +85,7 @@ const Header = () => {
     const result = await logout();
     if (result.success) {
       // Logout successful, user will be redirected by the auth store
+      navigate("/app/auth/login");
     }
     setShowProfileMenu(false);
   };
@@ -248,8 +250,18 @@ const Header = () => {
                   onClick={handleLogout}
                   className="flex items-center space-x-2 sm:space-x-3 w-full px-3 sm:px-4 py-2 text-xs sm:text-sm text-red-600 hover:bg-red-50"
                 >
-                  <FiLogOut size={14} className="sm:w-4 sm:h-4" />
+                  <div className='flex items-center space-x-2 sm:space-x-3 w-full px-3 sm:px-4 py-2 text-xs sm:text-sm text-red-600 hover:bg-red-50'>
+                    <FiLogOut size={14} className="sm:w-4 sm:h-4" />
                   <span>Sign Out</span>
+                  </div>
+                  <div>
+                    {isLoading && (
+                      <svg className="animate-spin h-4 w-4 text-red-600 ml-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                      </svg>
+                    )}
+                  </div>
                 </button>
               </div>
             </div>

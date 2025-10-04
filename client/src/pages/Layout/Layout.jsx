@@ -8,7 +8,7 @@ const Layout = () => {
 
   const isAuthRoute = location.pathname.includes("/auth/");
   if (isAuthRoute) {
-    console.log("🔓 Rendering auth route without layout");
+    // console.log("🔓 Rendering auth route without layout");
     return <Outlet />;
   }
 
