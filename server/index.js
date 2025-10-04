@@ -7,6 +7,7 @@ import cors from "cors";
 
 import authRoute from "./routes/auth.route.js";
 import connectDB from "./config/db.js";
+import e from "express";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -27,6 +28,26 @@ app.use(
   })
 );
 
+let isConnected = false;
+
+const connectInServer = async () => {
+  try {
+    await connectDB();
+    console.log("Database connected successfully");
+    isConnected = true;
+  } catch (error) {
+    console.error("Database connection failed:", error);
+  }
+}
+
+app.use(async (req, res, next) => {
+  if (!isConnected) {
+    await connectInServer();
+    isConnected = true;
+  }
+  next();
+});
+
 app.get("/", (req, res) => {
   res.json({
     message: "API is running...",
@@ -39,7 +60,9 @@ app.use("/api/auth", authRoute);
 
 
 app.listen(PORT, async () => {
-  await connectDB();
+  // await connectDB();
   console.log(`Server is running on port ${PORT}`);
   console.log(`http://localhost:${PORT}`);
 });
+
+export default app;
