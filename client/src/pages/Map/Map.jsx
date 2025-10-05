@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { FiMap, FiLayers, FiImage } from 'react-icons/fi';
+import { FiMap, FiLayers, FiImage, FiGlobe } from 'react-icons/fi';
 
 const Map = () => {
   const location = useLocation();
@@ -23,6 +23,12 @@ const Map = () => {
       path: '/app/map/section3',
       icon: <FiImage size={18} />,
       description: 'Search and view species images'
+    },
+    {
+      name: 'Integrated Map',
+      path: '/app/map/section4',
+      icon: <FiGlobe size={18} />,
+      description: 'Unified biodiversity, weather & pollution view'
     }
   ];
 

@@ -4,20 +4,8 @@ import {
   FiMenu,
   FiGrid,
   FiMap,
-  FiUsers,
-  FiFileText,
-  FiSettings,
-  FiMapPin,
-  FiHeart,
-  FiClipboard,
-  FiUser,
-  FiShield,
-  FiActivity,
-  FiMessageSquare,
-  FiDroplet,
-  FiEye,
-  FiMessageCircle,
 } from "react-icons/fi";
+import { GiArchiveResearch } from "react-icons/gi";
 import useAuthStore from "../../store/useAuthStore";
 
 const NavBar = () => {
@@ -73,7 +61,9 @@ const NavBar = () => {
 
   const navLinks = [
     { name: "Home", path: "/app", icon: <FiGrid size={20} /> },
+    { name: "Dashboard", path: "/app/dashboard", icon: <FiGrid size={20} /> },
     { name: "Map", path: "/app/map", icon: <FiMap size={20} /> },
+    {name:"Modules", path:"/app/modules", icon:<GiArchiveResearch size={20}/>},
   ];
 
   return (

@@ -7,6 +7,9 @@ import cors from "cors";
 
 import authRoute from "./routes/auth.route.js";
 import mapRoute from './routes/map.route.js';
+import dashboardRoute from './routes/dashboard.route.js';
+import biodiversityRoute from './routes/biodiversity.route.js';
+import { cacheMiddleware } from './middleware/cache.middleware.js';
 import connectDB from "./config/db.js";
 import e from "express";
 
@@ -58,7 +61,9 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/auth", authRoute);
-app.use('/api/map', mapRoute);
+app.use('/api/map', cacheMiddleware(300000), mapRoute); // 5 min cache
+app.use('/api/dashboard', dashboardRoute);
+app.use('/api/biodiversity', cacheMiddleware(600000), biodiversityRoute); // 10 min cache
 
 
 app.listen(PORT, async () => {

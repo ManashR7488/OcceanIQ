@@ -10,19 +10,26 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@react-three/drei": "^9.114.3",
+    "@react-three/fiber": "^8.17.10",
     "@tailwindcss/vite": "^4.1.13",
     "axios": "^1.12.2",
+    "date-fns": "^3.0.0",
+    "jspdf": "^2.5.2",
     "leaflet": "^1.9.4",
     "leaflet-velocity": "^1.9.2",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
+    "papaparse": "^5.4.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "react-icons": "^5.5.0",
     "react-leaflet": "^4.2.1",
     "react-leaflet-cluster": "^2.1.0",
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.9.3",
     "react-toastify": "^11.0.5",
+    "recharts": "^2.15.0",
     "tailwindcss": "^4.1.13",
+    "three": "^0.160.0",
     "zustand": "^5.0.8"
   },
   "devDependencies": {
