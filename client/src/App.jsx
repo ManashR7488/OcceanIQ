@@ -21,7 +21,7 @@ import Section1 from "./pages/Map/Section1";
 import Section2 from "./pages/Map/Section2";
 import Section3 from "./pages/Map/Section3";
 import Section4 from "./pages/Map/Section4";
-import Modules from "./pages/modules/modules";
+import Modules from "./pages/modules/Modules";
 import AiCard from "./components/Ai/AiCard";
 import useAiStore from "./store/useAiStore";
 
