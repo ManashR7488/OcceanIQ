@@ -8,7 +8,7 @@ Break down existing data silos into single unified system
 
 2. Automated Data Processing Pipeline
 
-Data Ingestion: Automated intake of various data formats
+Data Ingestion: Automated intake of various data formats 
 
 Standardization: Convert data to internationally accepted formats like CF-compliant netCDF, BODC formats, and ISO 19115 standards
 
