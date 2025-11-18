@@ -1,0 +1,59 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-pro",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -920,
+        564
+      ],
+      "id": "b08a3cd9-e02e-4ca8-9185-25bb9f5cb32b",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "fxrDN6zTYQQwdoIH",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=research output : {{ $json.choices[0].message.content }}\n\nrefrence links: {{ $json.citations }}\n",
+        "options": {
+          "systemMessage": "=You are an advanced formatting agent for OceanIQ. You will receive marine research output (either Markdown or JSON), along with an array of reference links in JSON format. Your job is to:\n\n1.Parse the research output and replace in-text citations like [1], [2], ... with properly numbered superscript HTML citation tags (<sup>[1]</sup>, <sup>[2]</sup>, etc.). Each number must refer to the corresponding URL in the references array you are given.\n\n\n2.At the end of the research content, append a “References” section as an HTML <ol>, where each item is a clickable link:\n    <ol>\n      <li><a href=\"URL1\" target=\"_blank\">URL1</a></li>\n      <li><a href=\"URL2\" target=\"_blank\">URL2</a></li>\n      ...\n    </ol>\n\n\n3.If the research output is in Markdown, convert it to richly formatted HTML (with headings, bold, italics, and bullet points preserved). Any code blocks or embedded JSON should be rendered as <pre><code>...</code></pre>\n\n4.Ensure that each [N] in the main content is hyperlinked to the corresponding reference in the final reference list.\n\n\nInput Example:\n-> Research Output (markdown or JSON):\n    Climate change has accelerated coral bleaching[1] and impacted marine fish breeding cycles[2].  \n[1]: https://oceanresearch.org/coral-bleaching  \n[2]: https://marinescience.edu/fish-breeding\n\n\n-> References (JSON array):\n  [\n  \"https://oceanresearch.org/coral-bleaching\",\n  \"https://marinescience.edu/fish-breeding\"\n]\n\n\nOutput Required:\n-A single well-formatted HTML document string, with:\n-All citations accurately numbered and hyperlinked,\n-A reference list (ordered, with clickable links),\n-Preserved headings and structure,\n-Clean visual formatting, suitable for PDF conversion or web publishing.\n\nInstructions:\n-Never omit or drop a reference; all [n] entries in text must match the provided references array.\n-The “References” section should appear as the last main section.\n-Check that each link opens in a new tab (target=\"_blank\").\n-If the research output includes additional metadata (title, topic, date), present it in a visually distinct way before the main content.\n\nExample Output (abbreviated):\n\n<h1>Marine Ecosystem Changes</h1>\n<p>Climate change has accelerated coral bleaching<sup><a href=\"#ref1\" target=\"_blank\">[1]</a></sup> and impacted marine fish breeding cycles<sup><a href=\"#ref2\" target=\"_blank\">[2]</a></sup>.</p>\n<h2>References</h2>\n<ol>\n  <li id=\"ref1\"><a href=\"https://oceanresearch.org/coral-bleaching\" target=\"_blank\">https://oceanresearch.org/coral-bleaching</a></li>\n  <li id=\"ref2\"><a href=\"https://marinescience.edu/fish-breeding\" target=\"_blank\">https://marinescience.edu/fish-breeding</a></li>\n</ol>\n\n\n\nTask:\nGiven the research output and reference array, return only the completed HTML string following these criteria.\n\n\n\n\n\n\n\n\n\n\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -800,
+        368
+      ],
+      "id": "e630d230-f40f-4f3b-8ac5-fceeb3c832be",
+      "name": "AI Agent"
+    }
+  ],
+  "connections": {
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f6f6b38a593ad9bdda4477d0b0c5dbc375863291ebf08efbd64b5feb9070bbaa"
+  }
+}

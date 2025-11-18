@@ -1,5 +1,5 @@
 import express from 'express';
-import { getStats, getOceanographicTrends, getBiodiversityHeatmap, getTimeSeriesData, getBathymetry, getEcosystemHealth, getCompareData } from '../controllers/dashboard.controller.js';
+import { getStats, getOceanographicTrends, getBiodiversityHeatmap, getTimeSeriesData, getBathymetry, getEcosystemHealth, getCompareData, getRecentObservations } from '../controllers/dashboard.controller.js';
 import { verifyToken } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
@@ -27,5 +27,8 @@ router.get('/ecosystem-health', getEcosystemHealth);
 
 // Comparative analysis data
 router.get('/compare', getCompareData);
+
+// Recent observations with pagination
+router.get('/recent-observations', getRecentObservations);
 
 export default router;

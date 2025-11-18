@@ -6,7 +6,9 @@ import MarineIcon from '../../components/MarineIcon';
 const Home = () => {
   const navigate = useNavigate();
   const [videoError, setVideoError] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
   const observerRef = useRef(null);
+  const videoRef = useRef(null);
 
   useEffect(() => {
     // Intersection Observer for fade-in animations on scroll
@@ -39,14 +41,15 @@ const Home = () => {
         {/* Video Background */}
         {!videoError && (
           <video
+            ref={videoRef}
             autoPlay
             loop
-            muted
+            muted={isMuted}
             playsInline
             className="absolute inset-0 w-full h-full object-cover"
             onError={() => setVideoError(true)}
           >
-            <source src="/videos/ocean-background.mp4" type="video/mp4" />
+            <source src="/videos/bg.mp4" type="video/mp4" />
           </video>
         )}
         
@@ -122,6 +125,14 @@ const Home = () => {
             </svg>
           </div>
         </div>
+
+        {/* Mute/Unmute Button */}
+        <button
+          onClick={() => setIsMuted(!isMuted)}
+          className="absolute bottom-20 right-8 z-20 p-3 bg-white/20 backdrop-blur-sm rounded-full hover:bg-white/30 transition"
+        >
+          {isMuted ? '🔇' : '🔊'}
+        </button>
       </section>
 
       {/* Features Section */}

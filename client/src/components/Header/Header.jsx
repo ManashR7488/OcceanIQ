@@ -7,6 +7,7 @@ import {
   FiChevronDown,
   FiHelpCircle,
   FiEdit,
+  FiBook,
 } from "react-icons/fi";
 import { RiRobot3Fill } from "react-icons/ri";
 import { Link, useNavigate } from "react-router-dom";
@@ -14,7 +15,7 @@ import useAuthStore from "../../store/useAuthStore";
 import useAiStore from "../../store/useAiStore";
 
 const Header = () => {
-  const {toggleChatBot} = useAiStore();
+  const { openChatBot } = useAiStore();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -113,10 +114,21 @@ const Header = () => {
       {/* Right side - Notifications & Profile */}
       <div className="flex items-center space-x-2 sm:space-x-4">
 
-        {/* chat with ai (chat bot link) */}
-        <div onClick={toggleChatBot} className=" cursor-pointer px-3 py-1 bg-blue-100 rounded-md flex justify-center items-center gap-2 border-2 border-blue-800 outline-2 outline-blue-400 hover:-translate-y-[1px] active:translate-y-[1px] shadow-2xl">
-          <RiRobot3Fill size={20} className="animate-bounce translate-y-1"/>
-          <h1 className="text-sm pointer-events-none select-none"> Chat with Ai </h1>
+        {/* AI Assistant button */}
+        <button 
+          onClick={openChatBot} 
+          className="cursor-pointer px-3 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white rounded-md flex justify-center items-center gap-2 transition-all hover:scale-105 active:scale-95 shadow-lg"
+        >
+          <RiRobot3Fill size={20} className="animate-pulse"/>
+          <span className="text-sm font-medium pointer-events-none select-none hidden sm:inline">AI Assistant</span>
+        </button>
+
+        {/* documentation link */}
+        <div>
+          <Link to="/app/documentation" className=" cursor-pointer px-3 py-1 bg-green-100 rounded-md flex justify-center items-center gap-2 border-2 border-green-800 outline-2 outline-green-400 hover:-translate-y-[1px] active:translate-y-[1px] shadow-2xl">
+            <FiBook size={20} className=""/>
+            <h1 className="text-sm pointer-events-none select-none"> Documentation </h1>
+          </Link>
         </div>
 
         {/* Notifications */}
@@ -260,6 +272,15 @@ const Header = () => {
                 >
                   <FiUser size={14} className="sm:w-4 sm:h-4" />
                   <span>Profile</span>
+                </Link>
+
+                <Link
+                  to="/app/documentation"
+                  className="flex items-center space-x-2 sm:space-x-3 px-3 sm:px-4 py-2 text-xs sm:text-sm text-gray-700 hover:bg-gray-100"
+                  onClick={() => setShowProfileMenu(false)}
+                >
+                  <FiBook size={14} className="sm:w-4 sm:h-4" />
+                  <span>API Documentation</span>
                 </Link>
 
                 <Link

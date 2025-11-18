@@ -9,6 +9,14 @@ const axiosInstance = axios.create({
     withCredentials: true,
 });
 
+export const axiosInstance2 = axios.create({
+  baseURL: import.meta.env.MODE === "development" ? "http://localhost:5000" : "https://occean-iq.vercel.app",
+  headers: {
+    "Content-Type": "application/json",
+  },
+    withCredentials: true,
+});
+
 // Request interceptor - Check cache before making GET requests
 axiosInstance.interceptors.request.use(
   (config) => {

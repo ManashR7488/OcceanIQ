@@ -15,6 +15,24 @@ const OPEN_METEO_MARINE_BASE = "https://marine-api.open-meteo.com/v1/marine";
 
 let countryMap = null;
 
+/**
+ * Helper function to extract and validate pagination parameters
+ * @param {Object} req - Express request object
+ * @returns {Object} Pagination parameters
+ */
+const getPaginationParams = (req) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(1000, Math.max(1, parseInt(req.query.limit || req.query.size) || 100));
+  const offset = parseInt(req.query.offset) || (page - 1) * limit;
+  
+  return {
+    page,
+    limit,
+    offset,
+    skip: offset
+  };
+};
+
 async function loadCountryMap() {
   if (!countryMap) {
     const resp = await axios.get(`${OBIS_API_BASE}/country`);
@@ -31,6 +49,8 @@ async function loadCountryMap() {
  * Proxies requests to avoid CORS issues and enable caching
  */
 export const getOBISOccurrences = async (req, res) => {
+  const startTime = Date.now();
+  
   try {
     const {
       scientificname,
@@ -38,10 +58,19 @@ export const getOBISOccurrences = async (req, res) => {
       country,
       startdepth,
       enddepth,
-      size = 500,
-      offset = 0,
     } = req.query;
-    const params = { size, offset };
+    
+    // Use pagination helper with validation (max 1000)
+    const { limit, offset } = getPaginationParams(req);
+    
+    if (limit > 1000) {
+      return res.status(400).json({ 
+        error: 'Invalid size parameter',
+        message: 'Maximum size is 1000 records per request'
+      });
+    }
+    
+    const params = { size: limit, offset };
 
     if (scientificname) params.scientificname = scientificname;
 
@@ -66,10 +95,45 @@ export const getOBISOccurrences = async (req, res) => {
       params,
       timeout: 30000,
     });
-
-    res.json(response.data);
+    
+    const executionTime = Date.now() - startTime;
+    
+    // Log slow queries (>5 seconds)
+    if (executionTime > 5000) {
+      console.warn(`⚠️  Slow OBIS query (${executionTime}ms):`, params);
+    } else if (process.env.NODE_ENV === 'development') {
+      console.log(`✅ OBIS query executed in ${executionTime}ms`);
+    }
+    
+    // Add pagination metadata to response
+    const total = response.data.total || 0;
+    const hasMore = offset + limit < total;
+    
+    res.json({
+      ...response.data,
+      pagination: {
+        offset,
+        limit,
+        total,
+        hasMore,
+        page: Math.floor(offset / limit) + 1,
+        totalPages: Math.ceil(total / limit)
+      },
+      cached: res.locals.cached || false,
+      timestamp: new Date().toISOString()
+    });
   } catch (error) {
-    console.error("Error fetching OBIS data:", error.message);
+    const executionTime = Date.now() - startTime;
+    console.error(`Error fetching OBIS data (${executionTime}ms):`, error.message);
+    
+    // Handle specific error types
+    if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+      return res.status(504).json({
+        error: 'External API timeout',
+        message: 'OBIS API request timed out. Please try again or reduce the query size.'
+      });
+    }
+    
     res.status(error.response?.status || 500).json({
       error: "Failed to fetch species occurrence data",
       message: error.message,
@@ -82,15 +146,14 @@ export const getOBISOccurrences = async (req, res) => {
  * Returns detailed occurrence data for a grid cell
  */
 export const getOBISCellOccurrences = async (req, res) => {
+  const startTime = Date.now();
+  
   try {
     const { geohash } = req.params;
-    const {
-      size = 100,
-      offset = 0,
-      scientificname,
-      startdepth,
-      enddepth,
-    } = req.query;
+    const { scientificname, startdepth, enddepth } = req.query;
+    
+    // Use pagination helper
+    const { limit, offset } = getPaginationParams(req);
 
     if (!geohash) {
       return res.status(400).json({
@@ -113,7 +176,7 @@ export const getOBISCellOccurrences = async (req, res) => {
 
     const params = {
       geometry: wktPolygon,
-      size,
+      size: limit,
       offset,
     };
 
@@ -128,10 +191,32 @@ export const getOBISCellOccurrences = async (req, res) => {
       params,
       timeout: 30000,
     });
-
-    res.json(response.data);
+    
+    const executionTime = Date.now() - startTime;
+    
+    // Log slow queries
+    if (executionTime > 3000) {
+      console.warn(`⚠️  Slow cell query (${executionTime}ms) for geohash: ${geohash}`);
+    }
+    
+    // Add pagination metadata
+    const total = response.data.total || 0;
+    
+    res.json({
+      ...response.data,
+      pagination: {
+        offset,
+        limit,
+        total,
+        hasMore: offset + limit < total,
+        page: Math.floor(offset / limit) + 1
+      },
+      cached: res.locals.cached || false,
+      timestamp: new Date().toISOString()
+    });
   } catch (error) {
-    console.error("Error fetching OBIS cell occurrences:", error.message);
+    const executionTime = Date.now() - startTime;
+    console.error(`Error fetching OBIS cell occurrences (${executionTime}ms):`, error.message);
     res.status(error.response?.status || 500).json({
       error: "Failed to fetch grid cell occurrence data",
       message: error.message,
