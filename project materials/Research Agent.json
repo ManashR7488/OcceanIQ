@@ -1,0 +1,1706 @@
+{
+  "name": "Research Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Enter the research topic",
+        "formDescription": "Enter any topic that you want to get researched",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Topic",
+              "placeholder": "Enter here...",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        528,
+        -304
+      ],
+      "id": "48060ea5-d549-48df-83c2-fe8ea8ef4698",
+      "name": "On form submission",
+      "webhookId": "0b9d3ec7-1eee-4920-a3dd-74ede497116a"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1136,
+        -144
+      ],
+      "id": "bcbcb5e8-17b5-4881-bf7b-c60011a0c278",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "GgvCwcPhIr8AAP5D",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1Kiff1s7JbmjQpJniO-zM0r-n4pIyS5LMCgAAZAo3EUA",
+          "mode": "list",
+          "cachedResultName": "Research agent",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Kiff1s7JbmjQpJniO-zM0r-n4pIyS5LMCgAAZAo3EUA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Blad1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Kiff1s7JbmjQpJniO-zM0r-n4pIyS5LMCgAAZAo3EUA/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Search Topic": "={{ $('On form submission').item.json.Topic }}",
+            "Titlte": "={{ $json.output.title }}",
+            "Introduction": "={{ $json.output.introduction }}",
+            "Chapter ": "={{ $json.output.Research }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Search Topic",
+              "displayName": "Search Topic",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Titlte",
+              "displayName": "Titlte",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Introduction",
+              "displayName": "Introduction",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Chapter ",
+              "displayName": "Chapter ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Sources",
+              "displayName": "Sources",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Sections",
+              "displayName": "Sections",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Content",
+              "displayName": "Content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "TOC",
+              "displayName": "TOC",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        1536,
+        -304
+      ],
+      "id": "e6f68457-0fc6-42b5-ab67-a86a9f546c07",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ugpyltO1vW4sTXNh",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"title\": \"<Generated Report Title>\",\n  \"introduction\": \"<Generated Introduction>\",\n  \"Research\": \"<h2>Research: [Title]</h2>\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1376,
+        -144
+      ],
+      "id": "66b5f11c-cf79-4008-a611-53f47c415cbb",
+      "name": "Structured Output Parser1"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "results",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1968,
+        -304
+      ],
+      "id": "76f6db0c-f32c-4a72-a455-fddbc32e4efb",
+      "name": "Split Out2"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map((item, index) => {\n  return {\n    json: {\n      number: index + 1,\n      url: item.json.url,\n      numberedUrl: `${index + 1}. ${item.json.url}`\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2144,
+        -304
+      ],
+      "id": "fc53dd95-9078-4f5c-b52c-da214b919cc3",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "numberedUrl"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        2464,
+        -400
+      ],
+      "id": "55d917c8-e038-4ab4-b04d-a9b256ca161c",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "output"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        2656,
+        -224
+      ],
+      "id": "dea09358-cfcf-4728-8ecf-0a3c6eda40e4",
+      "name": "Aggregate1"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2880,
+        -272
+      ],
+      "id": "6fe015b1-9a8e-4728-9f6f-7495760943c9",
+      "name": "Merge2"
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "dataPropertyName": "output",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "section",
+              "cssSelector": "title"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        3056,
+        -272
+      ],
+      "id": "bd489950-763e-4c79-aba0-f57a76a56332",
+      "name": "HTML"
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "section"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        3232,
+        -272
+      ],
+      "id": "959a5d04-1e27-415f-a597-c29ead8bbcd4",
+      "name": "Aggregate2"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        736,
+        -144
+      ],
+      "id": "125d9c2c-3a05-470f-893a-5878e1742f35",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "GgvCwcPhIr8AAP5D",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1Kiff1s7JbmjQpJniO-zM0r-n4pIyS5LMCgAAZAo3EUA",
+          "mode": "list",
+          "cachedResultName": "Research agent",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Kiff1s7JbmjQpJniO-zM0r-n4pIyS5LMCgAAZAo3EUA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Blad1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Kiff1s7JbmjQpJniO-zM0r-n4pIyS5LMCgAAZAo3EUA/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Search Topic": "={{ $('On form submission').item.json.Topic }}",
+            "TOC": "={{ $json.output }}"
+          },
+          "matchingColumns": [
+            "Search Topic"
+          ],
+          "schema": [
+            {
+              "id": "Search Topic",
+              "displayName": "Search Topic",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Titlte",
+              "displayName": "Titlte",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Introduction",
+              "displayName": "Introduction",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Chapter 1",
+              "displayName": "Chapter 1",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Chapter 2",
+              "displayName": "Chapter 2",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Chapter 3",
+              "displayName": "Chapter 3",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Chapter 4",
+              "displayName": "Chapter 4",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Chapter 5",
+              "displayName": "Chapter 5",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Topic 1 Sources",
+              "displayName": "Topic 1 Sources",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Topic 1 Sections",
+              "displayName": "Topic 1 Sections",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Topic 1 Content",
+              "displayName": "Topic 1 Content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Sources",
+              "displayName": "Sources",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "TOC",
+              "displayName": "TOC",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        4896,
+        -272
+      ],
+      "id": "e1e6771a-6f50-4dda-b113-246f16528fde",
+      "name": "Send TOC",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ugpyltO1vW4sTXNh",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1Kiff1s7JbmjQpJniO-zM0r-n4pIyS5LMCgAAZAo3EUA",
+          "mode": "list",
+          "cachedResultName": "Research agent",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Kiff1s7JbmjQpJniO-zM0r-n4pIyS5LMCgAAZAo3EUA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Blad1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Kiff1s7JbmjQpJniO-zM0r-n4pIyS5LMCgAAZAo3EUA/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Search Topic",
+              "lookupValue": "={{ $('On form submission').item.json.Topic }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        5104,
+        -272
+      ],
+      "id": "6b2d0b40-1de5-497c-bcd5-416a3e58c1a9",
+      "name": "get Data",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ugpyltO1vW4sTXNh",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Search Topic: {{ $json.Topic }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=You are a Ai research assistant designed to generate a single, highly relevant, and well-defined main research topic based on a provided search term or general idea.\n\nInstructions\nIdentify One Main Topic:\n\nAnalyze the input search term or phrase.\n\nClearly define one main research topic that is specific enough to enable in-depth research but broad enough to cover the essential aspects of the subject.\n\nEnsure Depth and Relevance:\n\nThe topic should be focused, relevant, and appropriate for comprehensive academic or professional research.\n\nAvoid vague, generic, or excessively narrow phrasing.\n\nNo Redundancy or Repetition:\n\nThe topic should not simply repeat the input phrase.\n\nIt must be reworded or refined to clearly state a well-structured research area.\n\nOutput Format (JSON)\n{\n  \"main_topic\": \"Your single, clearly defined research topic goes here.\"\n}\n\nExample Input & Output\nInput:\nAI-Powered Business Automation\n\nOutput:\n{\n  \"main_topic\": \"The Impact of Artificial Intelligence on Business Process Automation\"\n}\n\nFinal Notes\nYour output must be concise, focused, and designed to guide comprehensive research on the chosen topic."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        752,
+        -304
+      ],
+      "id": "6bafb142-93da-4df8-b993-4f28a75d806f",
+      "name": "Create Topics"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Research Topic:{{ $('Create Topics').item.json.output.topic }}\n\nSections:\n- {{ $('Research').item.json.results[0].title }}\n- {{ $('Research').item.json.results[1].title }}\n- {{ $('Research').item.json.results[2].title }}\n- {{ $('Research').item.json.results[3].title }}\n- {{ $('Research').item.json.results[4].title }}\n\nStyle Guide:\n{{ $('Write introduction').item.json.output.introduction }}",
+        "options": {
+          "systemMessage": "=Overview\nYou are an AI assistant tasked with creating a structured Table of Contents (ToC) in professional HTML formatting for a research report, focused on a single main topic with five distinct sections.\n\nGuidelines:\n\nThe ToC must feature one chapter (the main topic/title) as an <h2>, followed by an ordered list <ol> of five section titles.\n\nEach section should be a <li> under the main topic.\n\nUse the provided HTML style (background color, padding, font, etc.).\n\nInclude a <hr> for visual separation below the \"Table of Contents\" heading.\n\nThe output must be clean, readable, and well-structured.\nExample Output\n\n<div style=\"background-color: #f4f4f4; padding: 20px; font-size: 16px; line-height: 1.6; color: #333;\">\n    <h2>Table of Contents</h2>\n    <hr>\n    <ol>\n        <li>\n            <h2>The Evolution and Impact of Art in Visual Culture and Society</h2>\n            <ol>\n                <li>Art as a Reflection of Society</li>\n                <li>Art and Social Activism</li>\n                <li>Economic Impact of Art</li>\n                <li>Cultural Influence and Community Engagement</li>\n                <li>Art in Contemporary Digital Spaces</li>\n            </ol>\n        </li>\n    </ol>\n</div>\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        4560,
+        -272
+      ],
+      "id": "78af9b37-a786-4206-8e2d-ccbfb712b1b1",
+      "name": "Create Table of content"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = items[0];\n\n// Compose combined content in the desired order\nconst combinedContent = [\n  item.json.Titlte || '',\n  item.json.Introduction || '',\n  item.json.TOC || '',\n  item.json.Content || '',\n  item.json.Sources || ''\n].join('\\n\\n');\n\n// 1. Plain HTML version\nitem.json.CombinedHTML = combinedContent;\n\n// 2. JSON-safe version: Escapes all backslashes, double quotes, and line breaks\nitem.json.CombinedHTML_JSON = combinedContent\n  .replace(/\\\\/g, '\\\\\\\\')     // Escape any backslashes first!\n  .replace(/\"/g, '\\\\\"')       // Escape double quotes\n  .replace(/\\n/g, '\\\\n');     // Escape line breaks\n\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5296,
+        -272
+      ],
+      "id": "a3035319-5d84-4a9a-8bc5-4814b9b21656",
+      "name": "Structer final Report"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://rest-us.apitemplate.io/v2/create-pdf-from-html",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "filename",
+              "value": "={{ $('On form submission').item.json.Topic }}.pdf"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "api key"
+            },
+            {
+              "name": "Content-Type\t",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"body\": \"{{ $json.CombinedHTML_JSON }}\",\n  \"css\": \"<style>.bg{background: red;}</style>\",\n  \"data\": {\n    \"name\": \"This is a title\"\n  },\n  \"settings\": {\n    \"paper_size\": \"A4\",\n    \"orientation\": \"1\",\n    \"header_font_size\": \"9px\",\n    \"margin_top\": \"40\",\n    \"margin_right\": \"10\",\n    \"margin_bottom\": \"40\",\n    \"margin_left\": \"10\",\n    \"print_background\": \"1\",\n    \"displayHeaderFooter\": true,\n    \"custom_header\": \"<style>#header, #footer { padding: 0 !important; }</style><table style=\\\"width: 100%; padding: 0px 5px;margin: 0px!important;font-size: 8px\\\">\\n  <tr>\\n    <td style=\\\"text-align:left; width:30%!important;\\\"><span class=\\\"date\\\"></span></td>\\n    <td style=\\\"text-align:center; width:30%!important;\\\"><span class=\\\"pageNumber\\\"></span></td>\\n    <td style=\\\"text-align:right; width:30%!important;\\\"><span class=\\\"totalPages\\\"></span></td>\\n  </tr>\\n</table>\",\n    \"custom_footer\": \"<style>#header, #footer { padding: 0 !important; }</style><table style=\\\"width: 100%; padding: 0px 5px;margin: 0px!important;font-size: 8px\\\">\\n  <tr>\\n    <td style=\\\"text-align:left; width:30%!important;\\\"><span class=\\\"date\\\"></span></td>\\n    <td style=\\\"text-align:center; width:30%!important;\\\"><span class=\\\"pageNumber\\\"></span></td>\\n    <td style=\\\"text-align:right; width:30%!important;\\\"><span class=\\\"totalPages\\\"></span></td>\\n  </tr>\\n</table>\"\n  }\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5520,
+        -272
+      ],
+      "id": "1f9145b9-b663-4e1b-8636-6b5a7303455a",
+      "name": "Create PDF"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.download_url }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5728,
+        -272
+      ],
+      "id": "1c8fb1b9-8a47-474a-8a2a-d3e76ab20a12",
+      "name": "Download PDF"
+    },
+    {
+      "parameters": {
+        "sendTo": "milestonify@gmail.com",
+        "subject": "=Your Research on {{ $('On form submission').item.json.Topic }} is ready",
+        "message": "=Here is the research on: {{ $('On form submission').item.json.Topic }}",
+        "options": {
+          "appendAttribution": false,
+          "attachmentsUi": {
+            "attachmentsBinary": [
+              {}
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        5920,
+        -272
+      ],
+      "id": "3ef237c2-a435-4746-b139-fa226bd3072d",
+      "name": "Send a message",
+      "webhookId": "5d4000b9-bb85-4d84-8dd0-7431d76cb5a6",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "c8hEdggJ81frDKOj",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "o3-mini",
+          "mode": "list",
+          "cachedResultName": "o3-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        2208,
+        -128
+      ],
+      "id": "4ee942a8-25a9-4317-b2eb-7d59eda28fe3",
+      "name": "OpenAI Chat Model2",
+      "credentials": {
+        "openAiApi": {
+          "id": "GgvCwcPhIr8AAP5D",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"topic\": \"Scaling AI Automation for Businesses\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        928,
+        -144
+      ],
+      "id": "283db1e8-c42c-4c12-bb07-cc5337b17728",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Search topic: {{ $('On form submission').item.json.Topic }}\n\nResearch Topic: {{ $json.output.topic }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=# Overview\nYou are a report title and introduction generator AI. Your task is to create \na compelling title, a concise introduction, and five clear chapter headings \nfor a research report based on a given main search topic.\n\n## Instructions:\n1) Title: Generate a clear and engaging title that reflects the overall theme \nof the report.\n2) Introduction: Write a short introduction (2 paragraphs) that provides \ncontext, explains the significance of the topic, and outlines what the report \nwill cover. This section should start with a header called \"Introduction\".\n3) Table of Contents: At the end of the introduction, list the five sections \nof the report, each represented as a clearly formatted chapter title in <h2> \nheaders.\n4) Chapter Titles: Ensure each chapter title is formatted as an <h2> header \nto make it visually distinct.\n\n## Styling:\n- Title: <h1> element, centered, styled with a professional dark blue color.\n- Introduction: Wrapped in a <div> with a light gray background (#f4f4f4) for \ncontrast.\n- Paragraphs: Readable font size (16px), appropriate line height (1.6), and \nneutral text color (#333).\n- Horizontal Line (<hr>) should be used to separate the two introduction \nparagraphs.\n- Chapter Titles: Clearly formatted as <h2> elements for readability. Large \nfont and\n\n## Output Format (JSON):\n\n{\n  \"title\": \"<Generated Report Title>\",\n  \"introduction\": \"<Generated Introduction>\",\n  \"Research\": \"<h2>Chapter 5: [Title]</h2>\"\n}\n\n## Example Output:\n\n{\n  \"title\": \"<h1 style='text-align: center; color: #00366D;'>Vision and Vegetables: A Comprehensive Analysis of Carrots' Impact on Eye Health</h1>\",\n  \"introduction\": \"<div style='background-color: #f4f4f4; padding: 20px; font-size: 16px; line-height: 1.6; color: #333;'><h2>Introduction</h2><p>The relationship between carrots and vision has been a topic of both scientific interest and cultural folklore for generations. While the common parental advice 'eat your carrots, they're good for your eyes' has become deeply embedded in popular consciousness, the scientific reality behind this widely-held belief merits thorough investigation. This comprehensive report examines the multifaceted connection between carrot consumption and ocular health, exploring both the scientific evidence and historical perspectives that have shaped our understanding of this remarkable root vegetable's role in vision care.</p><hr><p>Through this analysis, we will explore the biochemical properties of carrots, the role of beta-carotene in eye health, and the scientific consensus on their effectiveness. Additionally, we will discuss historical influences and modern dietary recommendations. By the end of this report, readers will have a well-rounded understanding of the true impact of carrots on visual function.</p></div>\",\n  \"Research\": \"<h2 style='text-align: center; color: #00366D;'>Research: Modern Dietary Recommendations and Carrot Consumption</h2>\"\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        1168,
+        -304
+      ],
+      "id": "9c215bed-b6e9-469d-a335-b5c6a9c53ba1",
+      "name": "Write introduction"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1Kiff1s7JbmjQpJniO-zM0r-n4pIyS5LMCgAAZAo3EUA",
+          "mode": "list",
+          "cachedResultName": "Research agent",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Kiff1s7JbmjQpJniO-zM0r-n4pIyS5LMCgAAZAo3EUA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Blad1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Kiff1s7JbmjQpJniO-zM0r-n4pIyS5LMCgAAZAo3EUA/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Search Topic": "={{ $('On form submission').item.json.Topic }}",
+            "Sections": "={{ $json.section.join(\"\\n\") }}",
+            "Content": "={{ $('Merge2').item.json.output.join(\"\\n \\n\") }}"
+          },
+          "matchingColumns": [
+            "Search Topic"
+          ],
+          "schema": [
+            {
+              "id": "Search Topic",
+              "displayName": "Search Topic",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Titlte",
+              "displayName": "Titlte",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Introduction",
+              "displayName": "Introduction",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Chapter 5",
+              "displayName": "Chapter 5",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Sources",
+              "displayName": "Sources",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Sections",
+              "displayName": "Sections",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Content",
+              "displayName": "Content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "TOC",
+              "displayName": "TOC",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        3424,
+        -272
+      ],
+      "id": "9bc185b4-68bf-47ca-9ea4-e733f9f5c0de",
+      "name": "Update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ugpyltO1vW4sTXNh",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1Kiff1s7JbmjQpJniO-zM0r-n4pIyS5LMCgAAZAo3EUA",
+          "mode": "list",
+          "cachedResultName": "Research agent",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Kiff1s7JbmjQpJniO-zM0r-n4pIyS5LMCgAAZAo3EUA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Blad1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Kiff1s7JbmjQpJniO-zM0r-n4pIyS5LMCgAAZAo3EUA/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Search Topic",
+              "lookupValue": "={{ $('On form submission').item.json.Topic }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        3616,
+        -272
+      ],
+      "id": "4aa33c2f-0bab-4d7f-8782-533c5a6311eb",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ugpyltO1vW4sTXNh",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1Kiff1s7JbmjQpJniO-zM0r-n4pIyS5LMCgAAZAo3EUA",
+          "mode": "list",
+          "cachedResultName": "Research agent",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Kiff1s7JbmjQpJniO-zM0r-n4pIyS5LMCgAAZAo3EUA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Blad1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Kiff1s7JbmjQpJniO-zM0r-n4pIyS5LMCgAAZAo3EUA/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Search Topic": "={{ $('On form submission').item.json.Topic }}",
+            "Sources": "={{ $json.output }}"
+          },
+          "matchingColumns": [
+            "Search Topic"
+          ],
+          "schema": [
+            {
+              "id": "Search Topic",
+              "displayName": "Search Topic",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Titlte",
+              "displayName": "Titlte",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Introduction",
+              "displayName": "Introduction",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Chapter 1",
+              "displayName": "Chapter 1",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Chapter 2",
+              "displayName": "Chapter 2",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Chapter 3",
+              "displayName": "Chapter 3",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Chapter 4",
+              "displayName": "Chapter 4",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Chapter 5",
+              "displayName": "Chapter 5",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Topic 1 Sources",
+              "displayName": "Topic 1 Sources",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Topic 1 Sections",
+              "displayName": "Topic 1 Sections",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Topic 1 Content",
+              "displayName": "Topic 1 Content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Sources",
+              "displayName": "Sources",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        4208,
+        -272
+      ],
+      "id": "3fab0acb-0c3f-4093-a8bf-0380b66d71bc",
+      "name": "Update row in sheet1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ugpyltO1vW4sTXNh",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1Kiff1s7JbmjQpJniO-zM0r-n4pIyS5LMCgAAZAo3EUA",
+          "mode": "list",
+          "cachedResultName": "Research agent",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Kiff1s7JbmjQpJniO-zM0r-n4pIyS5LMCgAAZAo3EUA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Blad1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Kiff1s7JbmjQpJniO-zM0r-n4pIyS5LMCgAAZAo3EUA/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Search Topic",
+              "lookupValue": "={{ $('On form submission').item.json.Topic }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        4400,
+        -272
+      ],
+      "id": "c4214798-dd05-4f09-9926-26b9e153666f",
+      "name": "Get row(s) in sheet1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ugpyltO1vW4sTXNh",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        3824,
+        -192
+      ],
+      "id": "6dccf57b-9949-4f45-914f-3693ba9fd737",
+      "name": "OpenAI Chat Model3",
+      "credentials": {
+        "openAiApi": {
+          "id": "GgvCwcPhIr8AAP5D",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=sources\n{{ $('Merge2').item.json.numberedUrl }}",
+        "options": {
+          "systemMessage": "=Overview\nYou are an AI assistant specializing in generating well-formatted HTML source sections for research reports. You will be given a list of sources, each with an associated number. Your task is to generate an HTML-formatted \"Sources\" section where:\n\nEach source is displayed with its original number in brackets \n.\n\nEach source is a clickable hyperlink that opens in a new tab when clicked.\n\nThe list is structured in an ordered format (<ul> or <ol>) for clarity and readability.\n\nFormatting Guidelines:\nThe section title should be <h2>Sources</h2>.\n\nUse an unordered list (<ul>) to display the sources.\n\nEach source should be in the format:\n<li><a href=\"SOURCE_URL\" target=\"_blank\">[NUMBER] Source Title</a></li>\nThe original numbering of the sources must be preserved.\n\n\nExample Output Structure:\n<div class=\"sources-section\">\n    <h2>Sources</h2>\n    <ul>\n        <li><a href=\"https://example1.com\" target=\"_blank\">[1] Research on AI Development</a></li>\n        <li><a href=\"https://example2.com\" target=\"_blank\">[2] The Impact of Automation</a></li>\n        <li><a href=\"https://example3.com\" target=\"_blank\">[3] Machine Learning Trends</a></li>\n    </ul>\n</div>\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        3840,
+        -384
+      ],
+      "id": "4313193f-c8e6-4d75-8dc4-a007ee23678e",
+      "name": "make sources"
+    },
+    {
+      "parameters": {
+        "query": "={{ $('Create Topics').item.json.output.topic }}",
+        "options": {
+          "topic": "general",
+          "search_depth": "advanced",
+          "chunks_per_source": 3,
+          "max_results": 5
+        }
+      },
+      "type": "@tavily/n8n-nodes-tavily.tavily",
+      "typeVersion": 1,
+      "position": [
+        1776,
+        -304
+      ],
+      "id": "67d1eba8-7559-4fab-ba3e-514a77522fee",
+      "name": "Research",
+      "credentials": {
+        "tavilyApi": {
+          "id": "kWS8335VMJ3NjSIM",
+          "name": "Tavily account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Title:{{ $('Split Out2').item.json.title }}\n\nResearch:{{ $('Split Out2').item.json.content }}\n\nSource:{{ $json.numberedUrl }}\n\nStyle Guide Example: {{ $('Write introduction').item.json.output.introduction }}\n",
+        "options": {
+          "systemMessage": "=You are an academic writing assistant specialized in generating research reports based strictly on the provided topic and sources.\n\nRules:\n\nEvery factual claim, statistic, or referenced idea must be directly followed by an in-text citation as a clickable [n] (HTML: <a href=\"#sourceN\">[N]</a>), where N matches the relevant source in the sources list at the end.\n\nAlways use the correct number for each citation, matching the order of the sources as listed.\n\nNever cite a source that is not in the sources list.\n\nNever use [1] for all in-text citations—always match to the correct source number.\n\nDo not include sources in the references list if they are not cited in the report.\n\nNever generate sections about topics that are not present in the assignment prompt or supplied sources.\n\nNever include “Official Information” boxes, lists, or unrelated content.\n\nDo not repeat the same heading or title anywhere in the report.\n\nStructure the report with clear HTML using only <h1>, <h2>, <h3>, <ul>, <p>, etc., for clarity and readability.\n\nOnly output clean, structured HTML inside the <body>. No comments, no instructions, no meta, no scripts.\n\nAt the end, include a sources list: an unordered list (<ul>) where each <li> uses an anchor id and clickable link:\n<li id=\"sourceN\">[N] <a href=\"URL\" target=\"_blank\">Title</a></li>\n\nYour output must strictly follow these rules and the exact HTML template style provided. Do not deviate.\n\n<!DOCTYPE html>\n<html>\n<head>\n  <title>Morning Sugar Rush: Impact on Blood Glucose and Energy Dynamics</title>\n  <style>\n    body {\n      font-family: Arial, sans-serif;\n      margin: 24px;\n      line-height: 1.6;\n      background: #f7f7f7;\n    }\n    h1, h2, h3 {\n      color: #2c3e50;\n      margin-bottom: 8px;\n      font-weight: 600;\n    }\n    .report-section {\n      background: #fff;\n      border-radius: 6px;\n      padding: 24px;\n      margin-bottom: 24px;\n      box-shadow: 0 2px 10px rgba(60, 60, 60, 0.05);\n    }\n    ul {\n      padding-left: 18px;\n    }\n    a {\n      color: #1976d2;\n      text-decoration: underline;\n    }\n    .sources-list {\n      font-size: 1em;\n      color: #4c5b6e;\n      background: #fff;\n      border-radius: 6px;\n      padding: 24px;\n      margin-bottom: 24px;\n      box-shadow: 0 2px 10px rgba(60, 60, 60, 0.05);\n    }\n  </style>\n</head>\n<body>\n\n  <h1>Morning Sugar Rush: Impact on Blood Glucose and Energy Dynamics</h1>\n\n  <div class=\"report-section\">\n    <h2>Sugar at Breakfast and Daily Energy Intake</h2>\n    <p>\n      Recent research reveals a strong connection between breakfast sugar consumption and total daily energy intake. The timing and composition of breakfast significantly influence overall caloric consumption patterns\n      <a href=\"https://example.com/source1\" target=\"_blank\">[1]</a>.\n    </p>\n  </div>\n\n  <div class=\"report-section\">\n    <h2>Key Findings on Breakfast Sugar Content</h2>\n    <h3>High-Sugar Breakfasts</h3>\n    <p>\n      Studies show that consuming high-sugar breakfasts is correlated with increased total daily energy intake\n      <a href=\"https://example.com/source1\" target=\"_blank\">[1]</a>.\n      Additional research finds differences based on age and gender\n      <a href=\"https://example.com/source2\" target=\"_blank\">[2]</a>.\n    </p>\n    <h3>Low-Sugar Breakfasts</h3>\n    <p>\n      Low-sugar breakfasts do not show the same increase in daily energy intake\n      <a href=\"https://example.com/source2\" target=\"_blank\">[2]</a>.\n      This highlights that sugar content, rather than breakfast consumption itself, is the determining factor\n      <a href=\"https://example.com/source3\" target=\"_blank\">[3]</a>.\n    </p>\n  </div>\n\n  <div class=\"report-section\">\n    <h2>Breakfast Timing and Glycemic Control in Type 2 Diabetes</h2>\n    <h3>Background</h3>\n    <p>\n      Patients with type 2 diabetes often experience significant blood glucose fluctuations in the morning\n      <a href=\"https://example.com/source4\" target=\"_blank\">[4]</a>.\n    </p>\n    <h3>Morning Glycemic Challenges</h3>\n    <ul>\n      <li>Peak cortisol levels around 8:00 AM <a href=\"https://example.com/source4\" target=\"_blank\">[4]</a></li>\n      <li>The \"Dawn Phenomenon\"—naturally elevated glucose levels upon waking <a href=\"https://example.com/source5\" target=\"_blank\">[5]</a></li>\n    </ul>\n    <p>\n      Managing morning hyperglycemia is crucial for effective daily glucose control in type 2 diabetes\n      <a href=\"https://example.com/source5\" target=\"_blank\">[5]</a>.\n    </p>\n  </div>\n\n  <div class=\"report-section\">\n    <h2>Study Results: The Impact of Breakfast Timing</h2>\n    <p>\n      Research into breakfast timing and glycemic control included:\n      <a href=\"https://example.com/source2\" target=\"_blank\">[2]</a>\n    </p>\n    <ul>\n      <li>Initial enrollment: 14 participants <a href=\"https://example.com/source2\" target=\"_blank\">[2]</a></li>\n      <li>Final study group: 11 participants (after exclusions) <a href=\"https://example.com/source2\" target=\"_blank\">[2]</a></li>\n      <li>Exclusions based on non-adherence to study protocols <a href=\"https://example.com/source3\" target=\"_blank\">[3]</a></li>\n    </ul>\n    <h3>Key Observations</h3>\n    <ul>\n      <li>Total daily energy intake <a href=\"https://example.com/source3\" target=\"_blank\">[3]</a></li>\n      <li>Overall eating frequency <a href=\"https://example.com/source2\" target=\"_blank\">[2]</a></li>\n    </ul>\n    <p>\n      Adjusting breakfast timing may help manage morning blood glucose levels without disrupting overall dietary patterns\n      <a href=\"https://example.com/source5\" target=\"_blank\">[5]</a>.\n    </p>\n  </div>\n\n  <div class=\"report-section\">\n    <h2>Implications for Diabetes Management</h2>\n    <p>\n      These findings suggest that timing adjustments for breakfast can support effective diabetes management, especially regarding morning hyperglycemia\n      <a href=\"https://example.com/source2\" target=\"_blank\">[2]</a>.\n      Practical strategies focused on breakfast timing may enhance blood glucose control in type 2 diabetes\n      <a href=\"https://example.com/source3\" target=\"_blank\">[3]</a>.\n    </p>\n  </div>\n\n  <div class=\"report-section\">\n    <h2>Breakfast Recommendations for Type 2 Diabetes</h2>\n    <!-- Practical breakfast ideas for diabetes management, with citations if needed -->\n  </div>\n\n  <div class=\"report-section\">\n    <h2>The Role of Breakfast in Blood Sugar Control</h2>\n    <p>\n      For people with type 2 diabetes, breakfast plays a key role in maintaining stable blood sugar and overall health\n      <a href=\"https://example.com/source5\" target=\"_blank\">[5]</a>.\n      Morning insulin sensitivity is higher than in the evening, making breakfast vital for diabetes management\n      <a href=\"https://example.com/source3\" target=\"_blank\">[3]</a>.\n      A well-balanced breakfast can support satiety and stable glucose throughout the day\n      <a href=\"https://example.com/source2\" target=\"_blank\">[2]</a>.\n    </p>\n  </div>\n\n  <div class=\"sources-list\">\n    <h2>Sources</h2>\n    <ul>\n      <li>[1] <a href=\"https://example.com/source1\" target=\"_blank\">Title of Source 1</a></li>\n      <li>[2] <a href=\"https://example.com/source2\" target=\"_blank\">Title of Source 2</a></li>\n      <li>[3] <a href=\"https://example.com/source3\" target=\"_blank\">Title of Source 3</a></li>\n      <li>[4] <a href=\"https://example.com/source4\" target=\"_blank\">Title of Source 4</a></li>\n      <li>[5] <a href=\"https://example.com/source5\" target=\"_blank\">Title of Source 5</a></li>\n    </ul>\n  </div>\n\n</body>\n</html>\n\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        2320,
+        -224
+      ],
+      "id": "d45e52e4-6921-4d42-926f-bbb50fc13c90",
+      "name": "Write report"
+    },
+    {
+      "parameters": {
+        "content": "## Plannning",
+        "height": 496,
+        "width": 1232,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        464,
+        -496
+      ],
+      "id": "58bf7664-905e-4ffc-b7e4-af9a64b5347a",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Analyze the Topic and making the Research",
+        "height": 496,
+        "width": 1856,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1712,
+        -496
+      ],
+      "id": "d5e70bb0-1788-4258-aae4-2b9dd020aed2",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Create Source List",
+        "height": 496,
+        "width": 784,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3584,
+        -496
+      ],
+      "id": "90904c8c-2503-4f5a-9f71-0cd11e40ca4f",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## Create PDF and send Report to Email\n",
+        "height": 496,
+        "width": 1104,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        5072,
+        -496
+      ],
+      "id": "2979068a-76a4-4b55-a8da-2873e3c1b1c5",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "## Create Table Of Contents",
+        "height": 496,
+        "width": 672,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        4384,
+        -496
+      ],
+      "id": "1abea502-08aa-4829-9166-961eedee9a0e",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        4480,
+        -96
+      ],
+      "id": "0af7642f-7da4-4aa6-953c-9822f57a2efc",
+      "name": "OpenAI Chat Model4",
+      "credentials": {
+        "openAiApi": {
+          "id": "GgvCwcPhIr8AAP5D",
+          "name": "OpenAi account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Create Topics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Write introduction",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Write introduction",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out2": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Write report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate1": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Merge2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge2": {
+      "main": [
+        [
+          {
+            "node": "HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML": {
+      "main": [
+        [
+          {
+            "node": "Aggregate2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate2": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Create Topics",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send TOC": {
+      "main": [
+        [
+          {
+            "node": "get Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get Data": {
+      "main": [
+        [
+          {
+            "node": "Structer final Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Topics": {
+      "main": [
+        [
+          {
+            "node": "Write introduction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Table of content": {
+      "main": [
+        [
+          {
+            "node": "Send TOC",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structer final Report": {
+      "main": [
+        [
+          {
+            "node": "Create PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create PDF": {
+      "main": [
+        [
+          {
+            "node": "Download PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download PDF": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Write report",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Create Topics",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write introduction": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "make sources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update row in sheet1": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "make sources",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "make sources": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet1": {
+      "main": [
+        [
+          {
+            "node": "Create Table of content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Research": {
+      "main": [
+        [
+          {
+            "node": "Split Out2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write report": {
+      "main": [
+        [
+          {
+            "node": "Aggregate1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model4": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Create Table of content",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "942c96be-6e29-4960-a193-2afe29fe58f8",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "50618e78906785f75ac298c8b090bb3bd6406a17352da71ebb8b85e6df90fa3a"
+  },
+  "id": "WTQo8prgtclQr1JA",
+  "tags": []
+}

@@ -1,0 +1,20 @@
+ OcceanIQ: An AI-Powered Marine Data & Analytics Platform
+
+
+
+
+OcceanIQ is a comprehensive, cloud-native marine data analytics platform developed for the Centre for Marine Living Resources and Ecology (CMLRE), under the Ministry of Earth Sciences. The platform addresses the critical need for a centralized system to aggregate, analyze, and visualize vast and varied oceanographic datasets.
+
+Core capabilities include:
+
+Unified Data Hub: Integrates over 50 global and regional data sources, including OBIS, WoRMS, and iNaturalist, providing a single point of access to over 10,000 catalogued species and environmental layers.
+Advanced Analytics Modules: Features dedicated modules for Otolith Analysis (2D/3D shape analysis), eDNA Processing, and Taxonomic Management.
+Interactive Mapping: A multi-layered GIS interface for visualizing species occurrences, environmental data (sea temperature, currents), and ecosystem health metrics.
+AI-Powered Co-Pilot: An integrated AI assistant featuring:
+Predictive Analytics: Forecasts oceanographic trends and identifies anomalies.
+Correlation Engine: Uncovers relationships between environmental factors and species distribution.
+Dual-Mode Chatbot: A conversational AI for quick queries and a "Research Mode" that leverages an n8n agent to generate comprehensive, downloadable PDF research reports on any marine topic.
+
+
+
+The study of marine ecosystems is often hindered by fragmented and disparate data sources, impeding comprehensive analysis and timely decision-making. OcceanIQ is a comprehensive, AI-powered marine data analytics platform designed to address this challenge by unifying diverse oceanographic data into a single, interactive hub for researchers and policymakers. The platform integrates over 50 global and regional datasets, providing a multi-layered GIS interface for advanced spatial analysis. A central feature is its AI co-pilot, built on Google's Gemini model, which offers predictive trend analysis, correlation discovery, and a novel "Research Mode" that leverages an n8n automation workflow to generate comprehensive, downloadable PDF research documents on demand. By providing a seamless workflow from data aggregation to AI-driven insight generation, OcceanIQ significantly accelerates the research lifecycle and empowers data-informed marine conservation efforts.

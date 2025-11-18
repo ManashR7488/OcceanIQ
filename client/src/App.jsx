@@ -8,6 +8,7 @@ import BiodiversityAnalysis from "./pages/Dashboard/BiodiversityAnalysis";
 import CorrelationTool from "./pages/Dashboard/CorrelationTool";
 import OceanDepth3D from "./pages/Dashboard/OceanDepth3D";
 import EcosystemHealth from "./pages/Dashboard/EcosystemHealth";
+import AIAnalytics from "./pages/Dashboard/AIAnalytics";
 import AllFeatures from "./pages/AllFeatures/AllFeatures";
 import SignUp from "./pages/Auth/SignUp";
 import Login from "./pages/Auth/Login";
@@ -15,13 +16,17 @@ import Profile from "./pages/Profile/Profile";
 import Home from "./pages/Home/Home";
 import useAuthStore from "./store/useAuthStore";
 import Help from "./pages/Help/Help";
+import Documentation from "./pages/Documentation/Documentation";
 import NotFound from "./pages/Notfound/NotFound";
 import Map from "./pages/Map/Map";
 import Section1 from "./pages/Map/Section1";
 import Section2 from "./pages/Map/Section2";
 import Section3 from "./pages/Map/Section3";
 import Section4 from "./pages/Map/Section4";
-import Modules from "./pages/modules/Modules";
+import Modules from "./pages/Modules/Modules";
+import OtolithAnalysis from "./pages/Modules/OtolithAnalysis/OtolithAnalysis";
+import TaxonomicManagement from "./pages/Modules/TaxonomicManagement/TaxonomicManagement";
+import EDNAProcessing from "./pages/Modules/EDNAProcessing/EDNAProcessing";
 import AiCard from "./components/Ai/AiCard";
 import useAiStore from "./store/useAiStore";
 
@@ -56,11 +61,16 @@ const App = () => {
             <Route path="correlation-tool" element={<CorrelationTool />} />
             <Route path="3d-visualization" element={<OceanDepth3D />} />
             <Route path="ecosystem-health" element={<EcosystemHealth />} />
+            <Route path="ai-analytics" element={<AIAnalytics />} />
           </Route>
           <Route
             path="modules"
             element={user ? <Modules /> : <Navigate to="/app/auth/login" />}
-          ></Route>
+          >
+            <Route path="otolith-analysis" element={<OtolithAnalysis />} />
+            <Route path="taxonomic-management" element={<TaxonomicManagement />} />
+            <Route path="edna-processing" element={<EDNAProcessing />} />
+          </Route>
 
           <Route
             path="map"
@@ -97,6 +107,10 @@ const App = () => {
           <Route
             path="help"
             element={user ? <Help /> : <Navigate to="/app/auth/login" />}
+          />
+          <Route
+            path="documentation"
+            element={user ? <Documentation /> : <Navigate to="/app/auth/login" />}
           />
           <Route path="*" element={<NotFound />} />
         </Route>

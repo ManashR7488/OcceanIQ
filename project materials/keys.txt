@@ -1,0 +1,28 @@
+ROBOFLOW_API_KEY=your_roboflow_api_key_here
+ROBOFLOW_WORKSPACE=commercial-marine-fish-species
+ROBOFLOW_MODEL_ID=commercial-marine-fish-species/2
+GOOGLE_CLOUD_VISION_API_KEY=your_google_api_key_here
+SPECIES_IDENTIFICATION_PROVIDER=hybrid
+
+
+
+OBIS API (Ocean Biodiversity)
+
+
+
+Open-Meteo Marine Weather API
+
+
+
+WoRMS (World Register of Marine Species)
+
+
+
+iNaturalist API
+
+
+
+
+AIzaSyAJgqUinHphTQ3Mea1otRZc-fL37X6VPtA
+
+cx=03c90d897300c4649

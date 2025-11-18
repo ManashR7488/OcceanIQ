@@ -1,5 +1,6 @@
 import axios from 'axios';
 import User from '../models/User.model.js';
+import Observation from '../models/Observation.model.js';
 
 // Open-Meteo Marine API base URL
 const OPEN_METEO_MARINE_BASE = 'https://marine-api.open-meteo.com/v1/marine';
@@ -1027,6 +1028,95 @@ export const getCompareData = async (req, res) => {
     console.error('Error fetching comparison data:', error.message);
     res.status(500).json({
       error: 'Failed to fetch comparison data',
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Get recent observations with pagination
+ * Returns paginated list of recent species observations
+ */
+export const getRecentObservations = async (req, res) => {
+  try {
+    // Extract query parameters with defaults
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10));
+    
+    // Whitelist sortable fields (Comment 3)
+    const sortableFields = ['observedDate', 'createdAt', 'depth.value'];
+    const requestedSortBy = req.query.sortBy || 'observedDate';
+    const sortBy = sortableFields.includes(requestedSortBy) ? requestedSortBy : 'observedDate';
+    
+    const order = req.query.order === 'asc' ? 1 : -1;
+
+    // Validate pagination parameters
+    if (isNaN(page) || isNaN(limit)) {
+      return res.status(400).json({
+        error: 'Invalid pagination parameters',
+        message: 'Page and limit must be valid numbers'
+      });
+    }
+
+    // Calculate skip value for pagination
+    const skip = (page - 1) * limit;
+
+    // Build sort object
+    const sort = { [sortBy]: order };
+
+    // Query observations with populated speciesRef (Comment 1)
+    const observations = await Observation.find()
+      .populate('speciesRef', 'scientificName commonName taxonomicStatus')
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .select('speciesRef scientificName commonName location depth observedDate institutionCode recordedBy basisOfRecord individualCount')
+      .lean();
+
+    // Get total count for pagination
+    const totalObservations = await Observation.countDocuments();
+
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(totalObservations / limit);
+
+    // Format observations for response (Comment 1: use speciesRef with fallbacks)
+    const formattedObservations = observations.map(obs => ({
+      id: obs._id,
+      species: {
+        scientificName: obs.speciesRef?.scientificName || obs.scientificName || 'Unknown',
+        commonName: obs.speciesRef?.commonName || obs.commonName || 'N/A'
+      },
+      location: {
+        type: obs.location?.type || 'Point',
+        coordinates: obs.location?.coordinates || [0, 0],
+        latitude: obs.location?.coordinates?.[1] || 0,
+        longitude: obs.location?.coordinates?.[0] || 0
+      },
+      depth: obs.depth?.value || 'N/A',
+      depthUnit: obs.depth?.unit || 'm',
+      observedDate: obs.observedDate,
+      institution: obs.institutionCode || 'N/A',
+      observer: obs.recordedBy || 'N/A',
+      basisOfRecord: obs.basisOfRecord || 'N/A',
+      individualCount: obs.individualCount || 1
+    }));
+
+    // Return response with pagination metadata
+    res.json({
+      observations: formattedObservations,
+      pagination: {
+        currentPage: page,
+        totalPages: totalPages,
+        totalObservations: totalObservations,
+        limit: limit,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching recent observations:', error.message);
+    res.status(500).json({
+      error: 'Failed to fetch recent observations',
       message: error.message
     });
   }
