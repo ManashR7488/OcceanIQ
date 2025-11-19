@@ -4,7 +4,7 @@ import { toast } from "react-toastify";
 
 const useAiStore = create((set, get) => ({
   // Existing chatbot state
-  messages: [{ role: "Ai", message: "Hello! How can I assist you today...?" }],
+  messages: [{ role: "Ai", message: "Hello! How can I assist you today...?", timestamp: Date.now() }],
   isShowChatBot: false,
   toggleChatBot: () =>
     set((state) => ({ isShowChatBot: !state.isShowChatBot })),
@@ -26,8 +26,9 @@ const useAiStore = create((set, get) => ({
   // Normal chat function (existing)
   generateText: async (prompt) => {
     set({ isLoading: true });
+    const userMessage = { role: "User", message: prompt, timestamp: Date.now() };
     try {
-      set({ messages: [...get().messages, { role: "User", message: prompt }] });
+      set({ messages: [...get().messages, userMessage] });
       const response = await axiosInstance.post("/ai/chat", {
         prompt,
       });
@@ -35,7 +36,7 @@ const useAiStore = create((set, get) => ({
       set({
         messages: [
           ...get().messages,
-          { role: "Ai", message: response.data.message || "Sorry, I didn't get that." },
+          { role: "Ai", message: response.data.message || "Sorry, I didn't get that.", timestamp: Date.now() },
         ],
         isLoading: false,
       });
