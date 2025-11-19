@@ -27,6 +27,8 @@ import Modules from "./pages/Modules/Modules";
 import OtolithAnalysis from "./pages/Modules/OtolithAnalysis/OtolithAnalysis";
 import TaxonomicManagement from "./pages/Modules/TaxonomicManagement/TaxonomicManagement";
 import EDNAProcessing from "./pages/Modules/EDNAProcessing/EDNAProcessing";
+import Tools from "./pages/Tools/Tools";
+import AICorrelation from "./pages/Tools/AICorrelation";
 import AiCard from "./components/Ai/AiCard";
 import useAiStore from "./store/useAiStore";
 
@@ -58,7 +60,6 @@ const App = () => {
           >
             <Route index element={<OceanographicTrends />} />
             <Route path="analysis" element={<BiodiversityAnalysis />} />
-            <Route path="correlation-tool" element={<CorrelationTool />} />
             <Route path="3d-visualization" element={<OceanDepth3D />} />
             <Route path="ecosystem-health" element={<EcosystemHealth />} />
             <Route path="ai-analytics" element={<AIAnalytics />} />
@@ -70,6 +71,14 @@ const App = () => {
             <Route path="otolith-analysis" element={<OtolithAnalysis />} />
             <Route path="taxonomic-management" element={<TaxonomicManagement />} />
             <Route path="edna-processing" element={<EDNAProcessing />} />
+          </Route>
+
+          <Route
+            path="tools"
+            element={user ? <Tools /> : <Navigate to="/app/auth/login" />}
+          >
+            <Route index element={<CorrelationTool />} />
+            <Route path="ai-correlation" element={<AICorrelation />} />
           </Route>
 
           <Route

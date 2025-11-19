@@ -1,7 +1,6 @@
 import React from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import {
-  FiBarChart2,
   FiTrendingUp,
   FiMap,
   FiBox,
@@ -51,20 +50,6 @@ function Dashboard() {
         >
           <FiMap className="w-5 h-5" />
           <span>Biodiversity Analysis</span>
-        </NavLink>
-
-        <NavLink
-          to="/app/dashboard/correlation-tool"
-          className={({ isActive }) =>
-            `flex items-center space-x-1 px-4 py-2 rounded-lg font-semibold transition-all duration-200 ${
-              isActive
-                ? "bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`
-          }
-        >
-          <FiBarChart2 className="w-5 h-5" />
-          <span>Correlation Tool</span>
         </NavLink>
 
         <NavLink

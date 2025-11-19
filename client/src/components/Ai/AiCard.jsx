@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   FiX,
-  FiBarChart2,
   FiTrendingUp,
   FiMessageSquare,
   FiAlertCircle,
@@ -13,7 +12,6 @@ import {
   FiEye,
   FiRefreshCw,
   FiMaximize2,
-  FiCalendar,
   FiActivity,
   FiSearch,
   FiCopy,
@@ -23,8 +21,6 @@ import {
 } from "react-icons/fi";
 import { BsRobot } from "react-icons/bs";
 import {
-  ScatterChart,
-  Scatter,
   AreaChart,
   Area,
   XAxis,
@@ -33,6 +29,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  Line,
 } from "recharts";
 import useAiStore from "../../store/useAiStore";
 import { toast } from "react-toastify";
@@ -47,16 +44,11 @@ const AiCard = () => {
     closeChatBot,
     activeTab,
     setActiveTab,
-    correlationData,
-    correlationLoading,
     predictionData,
     predictionLoading,
-    dateFilters,
     selectedMetric,
     forecastDays,
-    fetchCorrelations,
     fetchPredictions,
-    setDateFilters,
     setPredictionParams,
     resetAiState,
     messages,
@@ -213,15 +205,6 @@ const AiCard = () => {
     resetAiState();
   };
 
-  const handleFetchCorrelations = () => {
-    // Date validation
-    if (dateFilters.startDate > dateFilters.endDate) {
-      toast.warning("Start date must be before end date");
-      return;
-    }
-    fetchCorrelations();
-  };
-
   const handleFetchPredictions = () => {
     fetchPredictions();
   };
@@ -287,7 +270,6 @@ const AiCard = () => {
 
   // Sidebar navigation items
   const sidebarItems = [
-    { id: "correlations", icon: FiBarChart2, label: "Correlations" },
     { id: "predictions", icon: FiTrendingUp, label: "Predictions" },
     { id: "chat", icon: FiMessageSquare, label: "AI Chat" },
   ];
@@ -379,11 +361,28 @@ const AiCard = () => {
 
             {/* Sidebar Footer */}
             {!isSidebarCollapsed && (
-              <div className="p-4 bg-blue-50 border-t border-blue-100 rounded-tl-2xl">
+              <div className="p-4 bg-blue-50 border-t border-blue-100 rounded-tl-2xl space-y-3">
                 <p className="text-xs text-gray-600 leading-relaxed">
                   <span className="font-semibold text-blue-700">💡 Tip:</span>{" "}
                   Use Ctrl+K to quickly focus chat input
                 </p>
+                <div className="pt-2 border-t border-blue-200">
+                  <p className="text-xs text-gray-600 leading-relaxed">
+                    <span className="font-semibold text-blue-700">📊 Looking for Correlation Analysis?</span>{" "}
+                    Visit the{" "}
+                    <a 
+                      href="/app/tools/ai-correlation" 
+                      className="text-blue-600 hover:text-blue-800 underline font-medium"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        window.location.href = '/app/tools/ai-correlation';
+                      }}
+                    >
+                      Tools section
+                    </a>
+                    {" "}for AI-powered correlation insights
+                  </p>
+                </div>
               </div>
             )}
           </div>
@@ -413,243 +412,7 @@ const AiCard = () => {
           {/* Content Area */}
           <div className="flex-1 bg-gray-50 overflow-hidden flex flex-col">
             <div className="flex-1 overflow-y-auto p-6 pb-20 md:pb-6">
-              {/* Tab 1: Correlations */}
-              {activeTab === "correlations" && (
-                <div className="space-y-6 animate-fadeIn">
-                  {/* Date Filters Card */}
-                  <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
-                    <div className="flex items-center gap-2 mb-4">
-                      <FiCalendar className="text-blue-600" size={20} />
-                      <h2 className="text-lg font-semibold text-gray-800">
-                        Date Range Selection
-                      </h2>
-                    </div>
-                    <div className="flex flex-wrap items-end gap-4">
-                      <div className="flex-1 min-w-[200px]">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Start Date
-                        </label>
-                        <input
-                          type="date"
-                          value={dateFilters.startDate}
-                          onChange={(e) =>
-                            setDateFilters({
-                              ...dateFilters,
-                              startDate: e.target.value,
-                            })
-                          }
-                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-[200px]">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          End Date
-                        </label>
-                        <input
-                          type="date"
-                          value={dateFilters.endDate}
-                          onChange={(e) =>
-                            setDateFilters({
-                              ...dateFilters,
-                              endDate: e.target.value,
-                            })
-                          }
-                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                        />
-                      </div>
-                      <button
-                        onClick={handleFetchCorrelations}
-                        disabled={correlationLoading}
-                        className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-teal-600 text-white rounded-lg hover:from-blue-700 hover:to-teal-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-md hover:shadow-lg transform hover:scale-105 active:scale-95 flex items-center gap-2"
-                      >
-                        {correlationLoading ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                            Analyzing...
-                          </>
-                        ) : (
-                          <>
-                            <FiActivity size={18} />
-                            Analyze Correlations
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Loading State with Skeleton */}
-                  {correlationLoading && (
-                    <div className="space-y-4 animate-pulse">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {[1, 2, 3].map((i) => (
-                          <div
-                            key={i}
-                            className="h-32 bg-gray-200 rounded-xl"
-                          ></div>
-                        ))}
-                      </div>
-                      <div className="h-96 bg-gray-200 rounded-xl"></div>
-                    </div>
-                  )}
-
-                  {/* Results */}
-                  {correlationData && !correlationLoading && (
-                    <div className="space-y-6 animate-fadeIn">
-                      {/* Synthetic data notice */}
-                      {correlationData.synthetic && (
-                        <div className="bg-yellow-50 border-l-4 border-yellow-400 rounded-lg p-4 flex items-start gap-3 shadow-sm">
-                          <FiAlertCircle className="text-yellow-600 text-xl flex-shrink-0 mt-0.5" />
-                          <div>
-                            <p className="text-sm font-semibold text-yellow-800">
-                              Synthetic Data Notice
-                            </p>
-                            <p className="text-sm text-yellow-700 mt-1">
-                              {correlationData.message}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Top Insights Cards */}
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {(correlationData?.insights || []).map(
-                          (insight, index) => (
-                            <div
-                              key={index}
-                              className={`relative p-5 rounded-xl border-2 transition-all duration-300 hover:scale-105 hover:shadow-lg ${
-                                insight.significance === "high"
-                                  ? "border-green-400 bg-gradient-to-br from-green-50 to-emerald-50 shadow-green-100"
-                                  : insight.significance === "medium"
-                                  ? "border-yellow-400 bg-gradient-to-br from-yellow-50 to-amber-50 shadow-yellow-100"
-                                  : "border-gray-300 bg-gradient-to-br from-gray-50 to-slate-50"
-                              } ${
-                                insight.significance === "high"
-                                  ? "animate-pulse-subtle"
-                                  : ""
-                              }`}
-                            >
-                              <div className="flex items-center justify-between mb-3">
-                                <span className="text-sm font-semibold text-gray-700">
-                                  {insight.parameter} vs {insight.metric}
-                                </span>
-                                <span
-                                  className={`text-3xl font-bold ${
-                                    Math.abs(insight.correlation) > 0.7
-                                      ? "text-green-600"
-                                      : Math.abs(insight.correlation) > 0.4
-                                      ? "text-yellow-600"
-                                      : "text-gray-600"
-                                  }`}
-                                >
-                                  {insight.correlation?.toFixed(2) || "0.00"}
-                                </span>
-                              </div>
-                              <p className="text-xs text-gray-600 leading-relaxed">
-                                {insight.description}
-                              </p>
-                              {/* Significance Badge */}
-                              <div className="absolute top-2 right-2">
-                                <span
-                                  className={`text-xs px-2 py-1 rounded-full font-medium ${
-                                    insight.significance === "high"
-                                      ? "bg-green-200 text-green-800"
-                                      : insight.significance === "medium"
-                                      ? "bg-yellow-200 text-yellow-800"
-                                      : "bg-gray-200 text-gray-700"
-                                  }`}
-                                >
-                                  {insight.significance}
-                                </span>
-                              </div>
-                            </div>
-                          )
-                        )}
-                      </div>
-
-                      {/* Scatter Plot Card */}
-                      <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
-                        <div className="flex items-center justify-between mb-4">
-                          <div>
-                            <h3 className="text-xl font-semibold text-gray-800">
-                              Scatter Plot Analysis
-                            </h3>
-                            <p className="text-sm text-gray-600 mt-1">
-                              Visual correlation between environmental
-                              parameters
-                            </p>
-                          </div>
-                          <button
-                            onClick={() =>
-                              toast.info("Export feature coming soon!")
-                            }
-                            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2 text-sm font-medium"
-                          >
-                            <FiDownload size={16} />
-                            Export
-                          </button>
-                        </div>
-                        <ResponsiveContainer width="100%" height={400}>
-                          <ScatterChart>
-                            <CartesianGrid
-                              strokeDasharray="3 3"
-                              stroke="#e5e7eb"
-                            />
-                            <XAxis
-                              dataKey="x"
-                              name="Temperature"
-                              unit="°C"
-                              label={{
-                                value: "Temperature (°C)",
-                                position: "insideBottom",
-                                offset: -5,
-                                style: {
-                                  fill: "#4b5563",
-                                  fontWeight: 600,
-                                },
-                              }}
-                              tick={{ fill: "#6b7280" }}
-                            />
-                            <YAxis
-                              dataKey="y"
-                              name="Abundance"
-                              label={{
-                                value: "Species Abundance",
-                                angle: -90,
-                                position: "insideLeft",
-                                style: {
-                                  fill: "#4b5563",
-                                  fontWeight: 600,
-                                },
-                              }}
-                              tick={{ fill: "#6b7280" }}
-                            />
-                            <Tooltip
-                              cursor={{ strokeDasharray: "3 3" }}
-                              contentStyle={{
-                                backgroundColor: "white",
-                                border: "1px solid #e5e7eb",
-                                borderRadius: "8px",
-                                boxShadow:
-                                  "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-                              }}
-                            />
-                            <Legend
-                              wrapperStyle={{ paddingTop: "20px" }}
-                            />
-                            <Scatter
-                              name="Temperature vs Abundance"
-                              data={correlationData?.scatterData || []}
-                              fill="#0891b2"
-                            />
-                          </ScatterChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Tab 2: Predictions */}
+              {/* Tab 1: Predictions */}
               {activeTab === "predictions" && (
                 <div className="space-y-6 animate-fadeIn">
                   {/* Controls Card */}
@@ -1065,10 +828,26 @@ const AiCard = () => {
                             <h3 className="text-xl font-semibold text-gray-800 mb-2">
                               Start a Conversation
                             </h3>
-                            <p className="text-gray-600 max-w-md">
+                            <p className="text-gray-600 max-w-md mb-4">
                               Ask me anything about marine species, ocean data,
                               or environmental trends
                             </p>
+                            <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200 max-w-md">
+                              <p className="text-xs text-gray-700">
+                                <span className="font-semibold text-blue-700">💡 Note:</span>{" "}
+                                For detailed correlation analysis, check out the{" "}
+                                <a 
+                                  href="/app/tools" 
+                                  className="text-blue-600 hover:text-blue-800 underline font-medium"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    window.location.href = '/app/tools';
+                                  }}
+                                >
+                                  Tools section
+                                </a>
+                              </p>
+                            </div>
                           </div>
                         )}
 
