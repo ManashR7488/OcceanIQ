@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+public\videos\bg.mp4
+./public/videos/bg.mp4
+public/videos/bg.mp4

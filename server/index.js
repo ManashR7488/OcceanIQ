@@ -15,6 +15,7 @@ import ednaRoute from './routes/edna.route.js';
 import dataRoute from './routes/data.route.js';
 import aiRoute from './routes/ai.route.js';
 import analyticsRoute from './routes/analytics.route.js';
+import communityRoute from './routes/community.route.js';
 import { cacheMiddleware } from './middleware/cache.middleware.js';
 import { 
   generalLimiter, 
@@ -98,6 +99,8 @@ app.use('/api/edna', ednaRoute); // eDNA Processing module
 app.use('/api/data', uploadLimiter, dataRoute); // Data ingestion endpoints with upload rate limit
 app.use('/api/analytics', analyticsLimiter, analyticsRoute); // AI-powered analytics endpoints with compute rate limit
 app.use('/api/ai', aiRoute); // AI chat and text generation with strict rate limit
+app.use('/api/community', communityRoute); // Community discussion forum with rate limiting on posts
+
 // Health check endpoint for provider status
 app.get("/api/health/providers", (req, res) => {
   const cloudinaryConfigured = Boolean(

@@ -29,6 +29,9 @@ import TaxonomicManagement from "./pages/Modules/TaxonomicManagement/TaxonomicMa
 import EDNAProcessing from "./pages/Modules/EDNAProcessing/EDNAProcessing";
 import Tools from "./pages/Tools/Tools";
 import AICorrelation from "./pages/Tools/AICorrelation";
+import Community from "./pages/Community/Community";
+import QuestionForm from "./pages/Community/QuestionForm";
+import QuestionDetail from "./pages/Community/QuestionDetail";
 import AiCard from "./components/Ai/AiCard";
 import useAiStore from "./store/useAiStore";
 
@@ -79,6 +82,15 @@ const App = () => {
           >
             <Route index element={<CorrelationTool />} />
             <Route path="ai-correlation" element={<AICorrelation />} />
+          </Route>
+
+          <Route
+            path="community"
+            element={user ? <Community /> : <Navigate to="/app/auth/login" />}
+          >
+            <Route path="new" element={<QuestionForm />} />
+            <Route path="edit/:id" element={<QuestionForm />} />
+            <Route path=":id" element={<QuestionDetail />} />
           </Route>
 
           <Route

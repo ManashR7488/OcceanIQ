@@ -33,7 +33,8 @@ try {
 }
 
 // Constants
-const CLOUDINARY_FOLDER = "occeaniq/otoliths";
+const CLOUDINARY_FOLDER_OTOLITHS = "occeaniq/otoliths";
+const CLOUDINARY_FOLDER_COMMUNITY = "occeaniq/community";
 
 /**
  * Upload image buffer to Cloudinary
@@ -41,11 +42,11 @@ const CLOUDINARY_FOLDER = "occeaniq/otoliths";
  * @param {Object} options - Upload options
  * @returns {Promise<Object>} Upload result with secure_url, public_id, etc.
  */
-export const uploadToCloudinary = (buffer, options = {}) => {
+const uploadToCloudinary = (buffer, options = {}) => {
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
-        folder: CLOUDINARY_FOLDER,
+        folder: options.folder || CLOUDINARY_FOLDER_OTOLITHS,
         resource_type: "image",
         transformation: [
           { quality: "auto", fetch_format: "auto" }, // Automatic optimization
@@ -70,7 +71,7 @@ export const uploadToCloudinary = (buffer, options = {}) => {
  * @param {String} publicId - Cloudinary public ID
  * @returns {Promise<Object>} Deletion result
  */
-export const deleteFromCloudinary = async (publicId) => {
+const deleteFromCloudinary = async (publicId) => {
   try {
     const result = await cloudinary.uploader.destroy(publicId, {
       resource_type: "image",
@@ -89,7 +90,7 @@ export const deleteFromCloudinary = async (publicId) => {
  * @param {Number} height - Thumbnail height (default 200)
  * @returns {String} Transformed image URL
  */
-export const generateThumbnailUrl = (publicId, width = 200, height = 200) => {
+const generateThumbnailUrl = (publicId, width = 200, height = 200) => {
   return cloudinary.url(publicId, {
     transformation: [
       {
@@ -108,7 +109,7 @@ export const generateThumbnailUrl = (publicId, width = 200, height = 200) => {
  * @param {String} publicId - Cloudinary public ID
  * @returns {Object} Object with thumbnail, medium, large, and original URLs
  */
-export const generateTransformationUrls = (publicId) => {
+const generateTransformationUrls = (publicId) => {
   return {
     thumbnail: cloudinary.url(publicId, {
       transformation: [
@@ -150,3 +151,12 @@ export const generateTransformationUrls = (publicId) => {
 };
 
 export default cloudinary;
+
+export {
+  uploadToCloudinary,
+  deleteFromCloudinary,
+  generateThumbnailUrl,
+  generateTransformationUrls,
+  CLOUDINARY_FOLDER_OTOLITHS,
+  CLOUDINARY_FOLDER_COMMUNITY,
+};

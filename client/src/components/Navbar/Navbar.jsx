@@ -18,6 +18,9 @@ import {
   FiBox,
   FiTool,
   FiBarChart2,
+  FiMessageSquare,
+  FiList,
+  FiPlus,
 } from "react-icons/fi";
 import { LuMicroscope } from "react-icons/lu";
 import { GiArchiveResearch } from "react-icons/gi";
@@ -133,6 +136,24 @@ const NavBar = () => {
           name: "AI Correlation", 
           path: "/app/tools/ai-correlation", 
           icon: <FiCpu size={16} /> 
+        },
+      ]
+    },
+    {
+      name: "Community",
+      path: "/app/community",
+      icon: <FiMessageSquare size={20} />,
+      children: [
+        { 
+          name: "All Questions", 
+          path: "/app/community", 
+          icon: <FiList size={16} />,
+          exact: true
+        },
+        { 
+          name: "Ask Question", 
+          path: "/app/community/new", 
+          icon: <FiPlus size={16} /> 
         },
       ]
     },
