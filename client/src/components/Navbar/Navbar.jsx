@@ -21,6 +21,7 @@ import {
   FiMessageSquare,
   FiList,
   FiPlus,
+  FiVideo,
 } from "react-icons/fi";
 import { LuMicroscope } from "react-icons/lu";
 import { GiArchiveResearch } from "react-icons/gi";
@@ -156,6 +157,12 @@ const NavBar = () => {
           icon: <FiPlus size={16} /> 
         },
       ]
+    },
+    {
+      name: "Connect",
+      path: "/app/connect",
+      icon: <FiVideo size={20} />,
+      exact: true
     },
   ];
 

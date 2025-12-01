@@ -34,6 +34,8 @@ import QuestionForm from "./pages/Community/QuestionForm";
 import QuestionDetail from "./pages/Community/QuestionDetail";
 import AiCard from "./components/Ai/AiCard";
 import useAiStore from "./store/useAiStore";
+import Connect from "./pages/Connect/Connect";
+import Meeting from "./pages/Connect/Meeting";
 
 const App = () => {
   const { user, checkAuth } = useAuthStore();
@@ -92,6 +94,15 @@ const App = () => {
             <Route path="edit/:id" element={<QuestionForm />} />
             <Route path=":id" element={<QuestionDetail />} />
           </Route>
+
+          <Route
+            path="connect"
+            element={user ? <Connect /> : <Navigate to="/app/auth/login" />}
+          />
+          <Route
+            path="connect/:meetingId"
+            element={user ? <Meeting /> : <Navigate to="/app/auth/login" />}
+          />
 
           <Route
             path="map"

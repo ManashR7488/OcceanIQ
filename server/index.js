@@ -4,6 +4,8 @@ dotenv.config();
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import morgan from "morgan";
+import http from "http";
+import setupSocket from "./socketHandler.js";
 
 import authRoute from "./routes/auth.route.js";
 import mapRoute from './routes/map.route.js';
@@ -28,11 +30,12 @@ import { getRedisClient, isConnected as isRedisConnected, disconnect as disconne
 import connectDB from "./config/db.js";
 import { validateProviderConfig, getProviderStatus } from './config/speciesProviders.config.js';
 
-
-
-
-
 const app = express();
+const server = http.createServer(app);
+
+// Initialize Socket.io
+setupSocket(server);
+
 const PORT = process.env.PORT || 5000;
 
 app.use(express.json());
@@ -57,9 +60,6 @@ if (process.env.NODE_ENV === 'development') {
 } else {
   app.use(morgan('combined')); // Standard Apache combined log format for production
 }
-
-// Apply general rate limiter to all routes
-// app.use(generalLimiter);
 
 let isConnected = false;
 
@@ -142,17 +142,10 @@ app.get("/api/health/providers", (req, res) => {
   });
 });
 
-app.listen(PORT, async () => {
+server.listen(PORT, async () => {
   // await connectDB();
   console.log(`Server is running on port ${PORT}`);
   console.log(`http://localhost:${PORT}`);
-  
-  // Log Redis connection status on startup
-  // if (isRedisConnected()) {
-  //   console.log('✅ Redis cache is active');
-  // } else {
-  //   console.log('📝 Using in-memory cache (Redis not available)');
-  // }
 });
 
 // Graceful shutdown handlers
