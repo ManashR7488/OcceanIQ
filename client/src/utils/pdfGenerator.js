@@ -134,19 +134,41 @@ export const generateSpeciesReportPDF = async (
   addSectionHeader("Taxonomic Classification");
   const hierarchy = species.taxonomicHierarchy;
   if (hierarchy && Object.keys(hierarchy).length > 0) {
-    const ranks = [
+    // Define preferred order for common ranks to ensure logical display
+    const rankOrder = [
       "kingdom",
       "phylum",
+      "subphylum",
       "class",
+      "subclass",
       "order",
+      "suborder",
       "family",
+      "subfamily",
       "genus",
       "species",
     ];
-    ranks.forEach((rank) => {
+
+    // Get all keys, sort them by rank order (unknown ranks go to the end)
+    const sortedKeys = Object.keys(hierarchy).sort((a, b) => {
+      const indexA = rankOrder.indexOf(a.toLowerCase());
+      const indexB = rankOrder.indexOf(b.toLowerCase());
+      
+      if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+      if (indexA !== -1) return -1;
+      if (indexB !== -1) return 1;
+      return a.localeCompare(b);
+    });
+
+    sortedKeys.forEach((rank) => {
       if (hierarchy[rank]) {
+        // Format rank name: camelCase/snake_case to Title Case
+        const formattedRank = rank
+          .replace(/([A-Z])/g, " $1") // Add space before capital letters
+          .replace(/^./, (str) => str.toUpperCase()); // Capitalize first letter
+
         addText(
-          `${rank.charAt(0).toUpperCase() + rank.slice(1)}: ${hierarchy[rank]}`,
+          `${formattedRank}: ${hierarchy[rank]}`,
           11
         );
       }
