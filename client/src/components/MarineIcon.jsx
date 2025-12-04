@@ -8,7 +8,6 @@ const MarineIcon = ({
   animated = false 
 }) => {
   const animationClass = animated ? 'animate-float' : '';
-  
   const icons = {
     fish: (
       <svg
@@ -105,18 +104,9 @@ const MarineIcon = ({
       </svg>
     ),
     submarine: (
-      <svg
-        width={size}
-        height={size}
-        viewBox="0 0 24 24"
-        fill={color}
-        className={`${className} ${animationClass}`}
-        role="img"
-        aria-label="Submarine icon"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <path d="M12,8H14L16,12H20A2,2 0 0,1 22,14V16A2,2 0 0,1 20,18H19C19,19.11 18.11,20 17,20A2,2 0 0,1 15,18H9C9,19.11 8.11,20 7,20A2,2 0 0,1 5,18H4A2,2 0 0,1 2,16V14A2,2 0 0,1 4,12H8L12,8M7,16.5A1.5,1.5 0 0,0 5.5,18A1.5,1.5 0 0,0 7,19.5A1.5,1.5 0 0,0 8.5,18A1.5,1.5 0 0,0 7,16.5M17,16.5A1.5,1.5 0 0,0 15.5,18A1.5,1.5 0 0,0 17,19.5A1.5,1.5 0 0,0 18.5,18A1.5,1.5 0 0,0 17,16.5M12,4L10.5,6H13.5L12,4Z" />
-      </svg>
+      <div className={` ${animationClass} ${className}`} role="img" aria-label="Submarine icon">
+        <img src="/images/favicon.png" alt="" className='h-ful w-full object-cover' />
+      </div>
     ),
     whale: (
       <svg

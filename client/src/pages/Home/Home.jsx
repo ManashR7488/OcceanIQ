@@ -68,7 +68,7 @@ const Home = () => {
         <div className="relative z-10 max-w-5xl mx-auto px-4 text-center text-white">
           {/* Icon */}
           <div className="flex items-center justify-center mb-6">
-            <MarineIcon type="submarine" size={80} color="white" animated />
+            <MarineIcon type="submarine" className='h-50 w-50' color="white" animated />
           </div>
           
           {/* Main Heading */}
