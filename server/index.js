@@ -96,7 +96,7 @@ app.use('/api/biodiversity', strictLimiter, cacheMiddleware(600000), biodiversit
 app.use('/api/otolith', otolithRoute);
 app.use('/api/taxonomy', taxonomyRoute);
 app.use('/api/edna', ednaRoute); // eDNA Processing module
-app.use('/api/data', uploadLimiter, dataRoute); // Data ingestion endpoints with upload rate limit
+app.use('/api/data', dataRoute); // Data ingestion endpoints
 app.use('/api/analytics', analyticsLimiter, analyticsRoute); // AI-powered analytics endpoints with compute rate limit
 app.use('/api/ai', aiRoute); // AI chat and text generation with strict rate limit
 app.use('/api/community', communityRoute); // Community discussion forum with rate limiting on posts

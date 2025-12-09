@@ -118,7 +118,7 @@ const IdentifyTab = ({ onSelectSpecies, refreshTrigger }) => {
         });
       }, 800);
 
-      setProcessingMessage("Analyzing with n8n taxonomy service...");
+      setProcessingMessage("Analyzing with AI taxonomy service...");
 
       const response = await axios.post("/taxonomy/identify", formData, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -150,11 +150,11 @@ const IdentifyTab = ({ onSelectSpecies, refreshTrigger }) => {
         toast.error("Request timeout");
       } else if (error.response?.status === 504) {
         errorMessage =
-          "n8n webhook timeout. Please check your n8n service.";
+          "Taxonomy service timeout. The identification is taking too long.";
         toast.error("Service timeout");
       } else if (error.response?.status === 503) {
         errorMessage =
-          "Cannot connect to n8n taxonomy service. Please check that n8n is running.";
+          "Cannot connect to taxonomy service. Please ensure the microservice is running.";
         toast.error("Service unavailable");
       } else if (error.response?.status === 401) {
         errorMessage = "Please log in to use species identification.";
@@ -497,16 +497,40 @@ const IdentifyTab = ({ onSelectSpecies, refreshTrigger }) => {
             <div className="relative z-10 grid grid-cols-1 lg:grid-cols-3 gap-0 lg:gap-8">
               {/* Image Container */}
               <div className="lg:col-span-1 bg-black/30 min-h-[300px] lg:min-h-full flex items-center justify-center p-4">
-                {(imagePreview || identificationResult.uploadedImageUrl || identificationResult.images?.[0]) ? (
-                  <img
-                    src={imagePreview || identificationResult.uploadedImageUrl || identificationResult.images?.[0]}
-                    alt={identificationResult.scientificName}
-                    className="w-full h-full max-h-[400px] object-contain rounded-lg shadow-2xl border border-white/10"
-                  />
+                {(imagePreview || identificationResult.uploadedImageUrl || identificationResult.imageUrl || identificationResult.images?.[0]) ? (
+                  <div className="relative group w-full">
+                    <img
+                      src={imagePreview || identificationResult.uploadedImageUrl || identificationResult.imageUrl || identificationResult.images?.[0]}
+                      alt={`${identificationResult.scientificName || 'Species'} - Representative image`}
+                      className="w-full h-full max-h-[400px] object-contain rounded-lg shadow-2xl border border-white/10 group-hover:scale-[1.02] transition-all duration-300"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="400"%3E%3Crect fill="%23374151" width="400" height="400"/%3E%3Ctext fill="%239CA3AF" font-family="Arial" font-size="18" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3EImage unavailable%3C/text%3E%3C/svg%3E';
+                      }}
+                      loading="lazy"
+                    />
+                    {(identificationResult.uploadedImageUrl || identificationResult.imageUrl) && (
+                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                        <button
+                          onClick={() => window.open(identificationResult.uploadedImageUrl || identificationResult.imageUrl, '_blank')}
+                          className="bg-white/90 hover:bg-white text-gray-900 px-4 py-2 rounded-lg text-sm font-medium opacity-0 group-hover:opacity-100 transition-all shadow-lg"
+                        >
+                          🔗 View Full Image
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 ) : (
-                  <div className="text-white/30 flex flex-col items-center">
-                    <FiUpload className="text-6xl mb-2" />
-                    <span>No Image Available</span>
+                  <div className="w-full max-h-[400px] flex items-center justify-center">
+                    <div className="text-center p-8">
+                      <div className="w-16 h-16 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                        <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                      <p className="text-white/60 font-medium">No representative image available</p>
+                      <p className="text-sm text-white/40 mt-1">Image will appear for species with reliable sources</p>
+                    </div>
                   </div>
                 )}
               </div>

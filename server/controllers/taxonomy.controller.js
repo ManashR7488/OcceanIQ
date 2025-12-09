@@ -5,10 +5,11 @@ import {
   uploadImageToCloudinary,
   deleteOtolithImage,
 } from "../services/otolithAnalysis.service.js";
-import { callN8nTaxonomyWebhook } from "../services/n8nTaxonomy.service.js";
+// Legacy n8n service - kept for reference, no longer used
+// import { callN8nTaxonomyWebhook } from "../services/n8nTaxonomy.service.js";
 
 /**
- * Identify species from name or image using n8n webhook integration
+ * Identify species from name or image using FastAPI microservice
  * Supports dual input: species name (text) OR image upload
  * POST /api/taxonomy/identify
  */
@@ -26,7 +27,7 @@ export const identifySpecies = async (req, res) => {
       });
     }
 
-    let inputForN8n;
+    let inputForMicroservice;
     let inputType;
 
     // Process image upload if provided
@@ -50,8 +51,8 @@ export const identifySpecies = async (req, res) => {
       imageUrl = uploadResult.imageUrl;
       thumbnailUrl = uploadResult.thumbnailUrl;
 
-      // Pass image URL to n8n
-      inputForN8n = imageUrl;
+      // Pass image URL to microservice
+      inputForMicroservice = imageUrl;
 
       console.log(
         `[Taxonomy] Image uploaded to Cloudinary: ${imageUrl.substring(0, 60)}...`
@@ -70,19 +71,36 @@ export const identifySpecies = async (req, res) => {
         });
       }
 
-      inputForN8n = speciesName;
+      inputForMicroservice = speciesName;
 
       console.log(`[Taxonomy] Identifying species by name: ${speciesName}`);
     }
 
-    // Call n8n taxonomy webhook
-    console.log(`[Taxonomy] Calling n8n webhook with ${inputType} input...`);
-    let n8nResponse;
+    // Call FastAPI microservice taxonomy identification endpoint
+    console.log(`[Taxonomy] Calling microservice with ${inputType} input...`);
+    const microserviceUrl = process.env.MICROSERVICE_URL || 'http://localhost:8000';
+    let microserviceResponse;
 
     try {
-      n8nResponse = await callN8nTaxonomyWebhook(inputForN8n);
-    } catch (webhookError) {
-      console.error("[Taxonomy] n8n webhook error:", webhookError.message);
+      const response = await axios.post(
+        `${microserviceUrl}/taxonomy-identify`,
+        {
+          input: inputForMicroservice,
+          input_type: inputType
+        },
+        {
+          timeout: 120000 // 120 second timeout (vision + search + synthesis)
+        }
+      );
+
+      if (!response.data.success || !response.data.data) {
+        throw new Error('Invalid response from microservice');
+      }
+
+      microserviceResponse = response.data.data;
+
+    } catch (microserviceError) {
+      console.error("[Taxonomy] Microservice error:", microserviceError.message);
 
       // Clean up Cloudinary image if uploaded
       if (publicId) {
@@ -91,39 +109,38 @@ export const identifySpecies = async (req, res) => {
         );
       }
 
-      // Handle specific webhook errors
-      if (webhookError.message.includes("timeout")) {
+      // Handle specific microservice errors
+      if (microserviceError.code === 'ECONNABORTED' || microserviceError.message.includes("timeout")) {
         return res.status(504).json({
           error: "Identification timeout",
           message:
-            "The n8n identification service is taking too long. Please try again or check your n8n workflow.",
+            "The species identification is taking too long. Please try with a clearer image or simpler query.",
         });
       }
 
-      if (webhookError.message.includes("unreachable")) {
+      if (microserviceError.code === 'ECONNREFUSED' || microserviceError.message.includes("connect")) {
         return res.status(503).json({
           error: "Service unavailable",
           message:
-            "Cannot connect to n8n taxonomy service. Please check that n8n is running.",
+            "Cannot connect to taxonomy identification service. Please ensure the microservice is running.",
         });
       }
 
-      if (webhookError.message.includes("not configured")) {
-        return res.status(500).json({
-          error: "Configuration error",
-          message:
-            "N8N_TAXONOMY_WEBHOOK_URL is not configured. Please contact the administrator.",
+      if (microserviceError.response?.status === 422) {
+        return res.status(400).json({
+          error: "Invalid input",
+          message: microserviceError.response.data.detail || "Invalid species name or image URL",
         });
       }
 
-      // Generic webhook error
+      // Generic microservice error
       return res.status(500).json({
         error: "Identification failed",
-        message: webhookError.message || "Failed to identify species via n8n",
+        message: microserviceError.response?.data?.detail || microserviceError.message || "Failed to identify species",
       });
     }
 
-    // Map n8n response to Species model schema
+    // Map microservice response to Species model schema
     
     // Map full IUCN conservation status labels to short enum codes
     const mapConservationStatus = (status) => {
@@ -154,30 +171,30 @@ export const identifySpecies = async (req, res) => {
     
     // Check if species already exists to preserve createdBy
     const existingSpecies = await Species.findOne({
-      scientificName: n8nResponse.scientificName,
+      scientificName: microserviceResponse.scientificName,
     });
 
     const speciesData = {
-      scientificName: n8nResponse.scientificName,
-      commonNames: n8nResponse.commonNames || [],
-      taxonomicHierarchy: n8nResponse.taxonomicHierarchy || {},
-      description: n8nResponse.description || "",
-      habitat: n8nResponse.habitat || "",
-      distribution: n8nResponse.distribution || "",
-      morphology: n8nResponse.morphology || {},
-      ecology: n8nResponse.ecology || {},
-      conservationStatus: mapConservationStatus(n8nResponse.conservationStatus),
-      economicImportance: n8nResponse.economicImportance || "",
-      externalLinks: n8nResponse.externalLinks || {},
-      // Use uploaded image or n8n-provided image
-      uploadedImageUrl: imageUrl || n8nResponse.imageUrl || null,
-      thumbnailUrl: thumbnailUrl || n8nResponse.thumbnailUrl || null,
+      scientificName: microserviceResponse.scientificName,
+      commonNames: microserviceResponse.commonNames || [],
+      taxonomicHierarchy: microserviceResponse.taxonomicHierarchy || {},
+      description: microserviceResponse.description || "",
+      habitat: microserviceResponse.habitat || "",
+      distribution: microserviceResponse.distribution || "",
+      morphology: microserviceResponse.morphology || {},
+      ecology: microserviceResponse.ecology || {},
+      conservationStatus: mapConservationStatus(microserviceResponse.conservationStatus),
+      economicImportance: microserviceResponse.economicImportance || "",
+      externalLinks: microserviceResponse.externalLinks || {},
+      // Use uploaded image or microservice-provided image
+      uploadedImageUrl: imageUrl || microserviceResponse.imageUrl || null,
+      thumbnailUrl: thumbnailUrl || microserviceResponse.thumbnailUrl || null,
       // User tracking - preserve original createdBy if updating, otherwise set to current user
       createdBy: existingSpecies ? existingSpecies.createdBy : req.user._id,
-      identificationSource: "n8n-webhook",
-      // Store original n8n response for debugging/auditing
+      identificationSource: "microservice-langgraph",
+      // Store original microservice response for debugging/auditing
       identificationMetadata: {
-        n8nResponse,
+        microserviceResponse,
         inputType,
         timestamp: new Date(),
         identifiedBy: req.user._id, // Track who performed this identification
@@ -186,7 +203,7 @@ export const identifySpecies = async (req, res) => {
 
     // Save or update species in database (upsert by scientificName)
     const savedSpecies = await Species.findOneAndUpdate(
-      { scientificName: n8nResponse.scientificName },
+      { scientificName: microserviceResponse.scientificName },
       speciesData,
       {
         new: true, // Return updated document
@@ -205,11 +222,11 @@ export const identifySpecies = async (req, res) => {
     // Return success response
     res.status(isNew ? 201 : 200).json({
       success: true,
-      message: `Species identified successfully via n8n webhook`,
+      message: `Species identified successfully via taxonomy microservice (LangGraph agent)`,
       data: {
         species: savedSpecies,
         isNew,
-        source: "n8n-webhook",
+        source: "microservice-langgraph",
       },
     });
   } catch (error) {

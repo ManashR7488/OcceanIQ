@@ -11,6 +11,8 @@ import {
 } from 'react-icons/fi';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import axiosInstance from '../../config/axios.config';
+import { useTimePeriod } from './Dashboard';
+import { getDateRangeForAPI } from '../../utils/timePeriodHelper';
 import GaugeChart from '../../components/Dashboard/GaugeChart';
 import AlertCard from '../../components/Dashboard/AlertCard';
 import ComparisonCard from '../../components/Dashboard/ComparisonCard';
@@ -23,6 +25,9 @@ import { exportToPDF, exportToCSV } from '../../utils/exportUtils';
  * Displays comprehensive health metrics, alerts, and comparison tools
  */
 function EcosystemHealth() {
+  // Get time period from context
+  const { timePeriod } = useTimePeriod();
+  
   // State management
   const [healthData, setHealthData] = useState(null);
   const [comparisonData, setComparisonData] = useState(null);
@@ -32,17 +37,22 @@ function EcosystemHealth() {
   const [selectedEntities, setSelectedEntities] = useState(''); // Changed to string for selector components
   const [comparingLoading, setComparingLoading] = useState(false);
 
-  // Fetch ecosystem health data on mount
+  // Fetch ecosystem health data on mount and when time period changes
   useEffect(() => {
     fetchHealthData();
-  }, []);
+  }, [timePeriod]);
 
   const fetchHealthData = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await axiosInstance.get('/dashboard/ecosystem-health');
+      // Get date range from time period
+      const { startDate, endDate } = getDateRangeForAPI(timePeriod);
+      
+      const response = await axiosInstance.get('/dashboard/ecosystem-health', {
+        params: { startDate, endDate }
+      });
       setHealthData(response.data);
       toast.success('Ecosystem health data loaded successfully');
     } catch (err) {

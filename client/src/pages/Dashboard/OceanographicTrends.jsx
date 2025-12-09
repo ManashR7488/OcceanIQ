@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axiosInstance from '../../config/axios.config';
 import { toast } from 'react-toastify';
+import { useTimePeriod } from './Dashboard';
+import { getDateRangeForAPI } from '../../utils/timePeriodHelper';
 import { FiUsers, FiDatabase, FiActivity, FiTrendingUp } from 'react-icons/fi';
 import {
   LineChart,
@@ -16,6 +18,9 @@ import {
 } from 'recharts';
 
 function OceanographicTrends() {
+  // Get time period from context
+  const { timePeriod } = useTimePeriod();
+  
   const [stats, setStats] = useState(null);
   const [trendsData, setTrendsData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -34,25 +39,32 @@ function OceanographicTrends() {
   });
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Fetch dashboard data on component mount
+  // Fetch dashboard data on component mount and when time period changes
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+  }, [timePeriod]);
 
-  // Fetch observations when page changes
+  // Fetch observations when page changes or time period changes
   useEffect(() => {
     fetchRecentObservations(currentPage);
-  }, [currentPage]);
+  }, [currentPage, timePeriod]);
 
   const fetchDashboardData = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      // Make parallel API calls
+      // Get date range from time period
+      const { startDate, endDate } = getDateRangeForAPI(timePeriod);
+      
+      // Make parallel API calls with time period params
       const [statsResponse, trendsResponse] = await Promise.all([
-        axiosInstance.get('/dashboard/stats'),
-        axiosInstance.get('/dashboard/oceanographic-trends')
+        axiosInstance.get('/dashboard/stats', {
+          params: { startDate, endDate }
+        }),
+        axiosInstance.get('/dashboard/oceanographic-trends', {
+          params: { startDate, endDate }
+        })
       ]);
 
       setStats(statsResponse.data);
@@ -75,12 +87,17 @@ function OceanographicTrends() {
     setObservationsLoading(true);
 
     try {
+      // Get date range from time period
+      const { startDate, endDate } = getDateRangeForAPI(timePeriod);
+      
       const response = await axiosInstance.get('/dashboard/recent-observations', {
         params: {
           page: page,
           limit: 10,
           sortBy: 'observedDate',
-          order: 'desc'
+          order: 'desc',
+          startDate,
+          endDate
         }
       });
 

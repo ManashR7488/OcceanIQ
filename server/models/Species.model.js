@@ -74,6 +74,7 @@ const speciesSchema = new mongoose.Schema(
       gbif: String,
       fishbase: String,
       iNaturalist: String,
+      itis: String,
     },
     // Additional fields for marine species
     morphology: {
@@ -125,7 +126,7 @@ const speciesSchema = new mongoose.Schema(
      */
     identificationSource: {
       type: String,
-      enum: ["n8n-webhook", "manual", "import"],
+      enum: ["n8n-webhook", "manual", "import", "microservice-langgraph"],
       default: "n8n-webhook",
     },
     /**

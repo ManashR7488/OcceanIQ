@@ -18,6 +18,9 @@ import {
   FiMenu,
   FiClock,
   FiUser,
+  FiDatabase,
+  FiTrash2,
+  FiUpload,
 } from "react-icons/fi";
 import { BsRobot } from "react-icons/bs";
 import {
@@ -32,11 +35,25 @@ import {
   Line,
 } from "recharts";
 import useAiStore from "../../store/useAiStore";
+import useAuthStore from "../../store/useAuthStore";
 import { toast } from "react-toastify";
+import axiosInstance from "../../config/axios.config";
 import {
   generateResearchReportPDF,
+  generateResearchReportPDFFallback,
   previewResearchDocument,
 } from "../../utils/pdfGenerator";
+import ReactMarkdown from "react-markdown";
+import {
+  DatasetCard,
+  DatasetList,
+  ChatMessage,
+  UploadZone,
+  DataChatInput,
+  DataChatHeader,
+  DataChatSidebar,
+} from "./DataChat";
+import "../../styles/dataChat.css";
 
 const AiCard = () => {
   const {
@@ -60,6 +77,22 @@ const AiCard = () => {
     researchLoading,
     generateResearch,
     clearResearchDocument,
+    // Data Chat state
+    uploadedDatasets,
+    activeDatasetId,
+    dataChatMessages,
+    dataChatLoading,
+    dataUploadLoading,
+    dataChatMessageLoading,
+    dataChatInput,
+    uploadProgress,
+    uploadDataFile,
+    sendDataChatMessage,
+    deleteDataset,
+    setActiveDataset,
+    setDataChatInput,
+    resetDataChat,
+    fetchUserDatasets,
   } = useAiStore();
 
   const chatMessagesEndRef = useRef(null);
@@ -68,6 +101,9 @@ const AiCard = () => {
   const [chatInput, setChatInput] = useState("");
   const [localResearchTopic, setLocalResearchTopic] = useState("");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isPdfGenerating, setIsPdfGenerating] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [showDebugInfo, setShowDebugInfo] = useState(false);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -75,6 +111,13 @@ const AiCard = () => {
       chatMessagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages, activeTab]);
+
+  // Fetch user datasets when Data Chat tab is opened
+  useEffect(() => {
+    if (isShowChatBot && activeTab === "dataChat") {
+      fetchUserDatasets();
+    }
+  }, [isShowChatBot, activeTab, fetchUserDatasets]);
 
   // ESC key handler, focus trap, and Ctrl+K shortcut
   useEffect(() => {
@@ -87,17 +130,34 @@ const AiCard = () => {
         return;
       }
 
-      // Ctrl+K or Cmd+K to focus chat input
+      // Ctrl+K or Cmd+K to focus chat input or search (context-aware)
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        // Switch to chat tab if not already there
-        if (activeTab !== "chat") {
-          setActiveTab("chat");
+        
+        // If on Data Chat tab, focus dataset search
+        if (activeTab === "dataChat") {
+          const searchInput = document.querySelector('input[placeholder="Search datasets..."]');
+          if (searchInput) {
+            searchInput.focus();
+            searchInput.select();
+          }
+        } else {
+          // Otherwise switch to chat tab and focus chat input
+          if (activeTab !== "chat") {
+            setActiveTab("chat");
+          }
+          // Focus chat input after a brief delay to ensure tab switch completes
+          setTimeout(() => {
+            chatInputRef.current?.focus();
+          }, 100);
         }
-        // Focus chat input after a brief delay to ensure tab switch completes
-        setTimeout(() => {
-          chatInputRef.current?.focus();
-        }, 100);
+        return;
+      }
+
+      // Ctrl+U to trigger file upload (Data Chat only)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "u" && activeTab === "dataChat") {
+        e.preventDefault();
+        document.getElementById("data-file-upload-hidden")?.click();
         return;
       }
 
@@ -200,9 +260,98 @@ const AiCard = () => {
     return [...historicalData, ...forecastData];
   }, [predictionData]);
 
+  // Data Chat handlers
+  const handleDatasetDownload = async (dataset) => {
+    try {
+      toast.info(`Downloading ${dataset.filename}...`);
+      const response = await axiosInstance.get(`/data/datasets/${dataset.id}/download`, {
+        responseType: 'blob'
+      });
+      
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', dataset.filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast.success(`Downloaded ${dataset.filename}`);
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Failed to download dataset');
+    }
+  };
+
+  const handleExportChatHistory = () => {
+    const activeDataset = uploadedDatasets.find(d => d.id === activeDatasetId);
+    if (!activeDataset) {
+      toast.error('No active dataset selected');
+      return;
+    }
+
+    const messages = dataChatMessages[activeDatasetId] || [];
+    if (messages.length === 0) {
+      toast.warning('No chat history to export');
+      return;
+    }
+
+    const chatHistory = messages.map(msg => ({
+      role: msg.role,
+      message: msg.message,
+      timestamp: new Date(msg.timestamp).toISOString(),
+      sources: msg.sources?.length || 0
+    }));
+
+    const dataStr = JSON.stringify({ dataset: activeDataset.filename, history: chatHistory }, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `${activeDataset.filename}_chat_history.json`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+
+    toast.success('Chat history exported');
+  };
+
+  const handleShareDataset = () => {
+    const activeDataset = uploadedDatasets.find(d => d.id === activeDatasetId);
+    if (!activeDataset) {
+      toast.error('No active dataset selected');
+      return;
+    }
+
+    // Copy dataset ID to clipboard for sharing
+    navigator.clipboard.writeText(activeDataset.id);
+    toast.success('Dataset ID copied to clipboard - Share with collaborators!');
+  };
+
+  const handleTestRetrieval = async () => {
+    if (!activeDatasetId) {
+      toast.error('No dataset selected');
+      return;
+    }
+
+    try {
+      const response = await axiosInstance.post('/ai/data-chat', {
+        query: 'test',
+        dataset_id: activeDatasetId,
+        conversation_history: []
+      });
+      toast.success(`✅ Verification passed: ${response.data.sources?.length || 0} chunks retrieved`);
+    } catch (error) {
+      toast.error(`❌ Verification failed: ${error.response?.data?.error || error.message}`);
+    }
+  };
+
   const handleClose = () => {
     closeChatBot();
-    resetAiState();
+    resetAiState(); // Now also resets data-chat state
   };
 
   const handleFetchPredictions = () => {
@@ -246,13 +395,32 @@ const AiCard = () => {
   const handleDownloadPDF = async () => {
     if (!researchDocument) return;
 
+    setIsPdfGenerating(true);
     try {
-      toast.info("Generating PDF...");
-      await generateResearchReportPDF(researchDocument);
-      toast.success("PDF downloaded successfully!");
+      toast.info("Generating PDF... This may take a moment.");
+
+      try {
+        // Try primary method (html2pdf)
+        await generateResearchReportPDF(researchDocument);
+        toast.success("PDF downloaded successfully!");
+      } catch (primaryError) {
+        console.warn(
+          "Primary PDF generation failed, trying fallback:",
+          primaryError
+        );
+        toast.info("Retrying with alternative method...");
+
+        // Try fallback method (improved jsPDF)
+        await generateResearchReportPDFFallback(researchDocument);
+        toast.success("PDF downloaded successfully!");
+      }
     } catch (error) {
       console.error("PDF generation error:", error);
-      toast.error("Failed to generate PDF");
+      toast.error(
+        "Failed to generate PDF. Please try the Preview option instead."
+      );
+    } finally {
+      setIsPdfGenerating(false);
     }
   };
 
@@ -272,6 +440,7 @@ const AiCard = () => {
   const sidebarItems = [
     { id: "predictions", icon: FiTrendingUp, label: "Predictions" },
     { id: "chat", icon: FiMessageSquare, label: "AI Chat" },
+    { id: "dataChat", icon: FiDatabase, label: "Data Chat" },
   ];
 
   return (
@@ -368,19 +537,21 @@ const AiCard = () => {
                 </p>
                 <div className="pt-2 border-t border-blue-200">
                   <p className="text-xs text-gray-600 leading-relaxed">
-                    <span className="font-semibold text-blue-700">📊 Looking for Correlation Analysis?</span>{" "}
+                    <span className="font-semibold text-blue-700">
+                      📊 Looking for Correlation Analysis?
+                    </span>{" "}
                     Visit the{" "}
-                    <a 
-                      href="/app/tools/ai-correlation" 
+                    <a
+                      href="/app/tools/ai-correlation"
                       className="text-blue-600 hover:text-blue-800 underline font-medium"
                       onClick={(e) => {
                         e.preventDefault();
-                        window.location.href = '/app/tools/ai-correlation';
+                        window.location.href = "/app/tools/ai-correlation";
                       }}
                     >
                       Tools section
-                    </a>
-                    {" "}for AI-powered correlation insights
+                    </a>{" "}
+                    for AI-powered correlation insights
                   </p>
                 </div>
               </div>
@@ -600,8 +771,9 @@ const AiCard = () => {
                                     : "text-gray-600"
                                 }`}
                               >
-                                {Number(predictionData?.trend?.percentage ?? 0) >
-                                0
+                                {Number(
+                                  predictionData?.trend?.percentage ?? 0
+                                ) > 0
                                   ? "+"
                                   : ""}
                                 {Number(predictionData?.trend?.percentage ?? 0)}
@@ -655,13 +827,10 @@ const AiCard = () => {
                                 backgroundColor: "white",
                                 border: "1px solid #e5e7eb",
                                 borderRadius: "8px",
-                                boxShadow:
-                                  "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                                boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
                               }}
                             />
-                            <Legend
-                              wrapperStyle={{ paddingTop: "20px" }}
-                            />
+                            <Legend wrapperStyle={{ paddingTop: "20px" }} />
                             <Area
                               type="monotone"
                               dataKey="value"
@@ -834,14 +1003,16 @@ const AiCard = () => {
                             </p>
                             <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200 max-w-md">
                               <p className="text-xs text-gray-700">
-                                <span className="font-semibold text-blue-700">💡 Note:</span>{" "}
+                                <span className="font-semibold text-blue-700">
+                                  💡 Note:
+                                </span>{" "}
                                 For detailed correlation analysis, check out the{" "}
-                                <a 
-                                  href="/app/tools" 
+                                <a
+                                  href="/app/tools"
                                   className="text-blue-600 hover:text-blue-800 underline font-medium"
                                   onClick={(e) => {
                                     e.preventDefault();
-                                    window.location.href = '/app/tools';
+                                    window.location.href = "/app/tools";
                                   }}
                                 >
                                   Tools section
@@ -882,7 +1053,9 @@ const AiCard = () => {
                                     </p>
                                     {msg.timestamp && (
                                       <span className="text-xs opacity-50">
-                                        {new Date(msg.timestamp).toLocaleTimeString("en-US", {
+                                        {new Date(
+                                          msg.timestamp
+                                        ).toLocaleTimeString("en-US", {
                                           hour: "2-digit",
                                           minute: "2-digit",
                                         })}
@@ -949,9 +1122,7 @@ const AiCard = () => {
                                 onClick={() => setChatInput(question)}
                                 className="p-3 text-xs bg-white text-left text-gray-700 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-all border border-gray-200 shadow-sm hover:shadow-md transform hover:scale-102"
                               >
-                                <span className="font-medium">
-                                  {question}
-                                </span>
+                                <span className="font-medium">{question}</span>
                               </button>
                             ))}
                           </div>
@@ -1175,10 +1346,20 @@ const AiCard = () => {
                                 </button>
                                 <button
                                   onClick={handleDownloadPDF}
-                                  className="px-6 py-2 bg-gradient-to-r from-blue-600 to-teal-600 text-white rounded-lg hover:from-blue-700 hover:to-teal-700 transition-all flex items-center gap-2 font-medium shadow-md hover:shadow-lg transform hover:scale-105 active:scale-95"
+                                  disabled={isPdfGenerating}
+                                  className="px-6 py-2 bg-gradient-to-r from-blue-600 to-teal-600 text-white rounded-lg hover:from-blue-700 hover:to-teal-700 transition-all flex items-center gap-2 font-medium shadow-md hover:shadow-lg transform hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                  <FiDownload />
-                                  Download PDF
+                                  {isPdfGenerating ? (
+                                    <>
+                                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                                      Generating PDF...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <FiDownload />
+                                      Download PDF
+                                    </>
+                                  )}
                                 </button>
                               </div>
                             </div>
@@ -1189,15 +1370,241 @@ const AiCard = () => {
                   )}
                 </div>
               )}
+
+              {/* Tab 3: Data Chat - Redesigned */}
+              {activeTab === "dataChat" && (
+                <div className="h-full flex flex-col animate-fadeIn">
+                  {/* Header */}
+                  <DataChatHeader
+                    activeDataset={uploadedDatasets.find(
+                      (d) => d.id === activeDatasetId
+                    )}
+                    onUpload={() =>
+                      document
+                        .getElementById("data-file-upload-hidden")
+                        ?.click()
+                    }
+                    onToggleDebug={() => setShowDebugInfo(!showDebugInfo)}
+                    showDebug={showDebugInfo}
+                  />
+
+                  {/* Main Three-Column Layout */}
+                  <div className="flex-1 flex overflow-hidden">
+                    {/* Left Sidebar - Dataset Management (25% on desktop, 30% on tablet, 100% on mobile) */}
+                    <div className="w-full lg:w-1/4 md:w-[30%] border-r border-gray-200 bg-white flex flex-col">
+                      <UploadZone
+                        onUpload={uploadDataFile}
+                        loading={dataUploadLoading}
+                        progress={uploadProgress}
+                        disabled={dataUploadLoading}
+                      />
+                      <DatasetList
+                        datasets={uploadedDatasets}
+                        activeId={activeDatasetId}
+                        onSelect={setActiveDataset}
+                        onDelete={deleteDataset}
+                        onDownload={handleDatasetDownload}
+                        onUpload={() =>
+                          document
+                            .getElementById("data-file-upload-hidden")
+                            ?.click()
+                        }
+                        loading={false}
+                      />
+                    </div>
+
+                    {/* Center - Chat Interface (50% on desktop, 70% on tablet, 100% on mobile) */}
+                    <div className="flex-1 flex flex-col bg-gray-50">
+                      {uploadedDatasets.length === 0 ? (
+                        /* Empty State */
+                        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center animate-slideUp">
+                          <div className="mb-6 p-6 bg-gradient-to-br from-blue-100 to-teal-100 rounded-full">
+                            <FiDatabase size={64} className="text-blue-600" />
+                          </div>
+                          <h3 className="text-3xl font-bold text-gray-800 mb-3">
+                            Welcome to Data Chat
+                          </h3>
+                          <p className="text-gray-600 mb-8 max-w-md text-lg">
+                            Upload your marine datasets and start asking
+                            questions with AI-powered analysis
+                          </p>
+
+                          {/* Onboarding Steps */}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 max-w-3xl">
+                            <div className="p-6 bg-white rounded-xl shadow-md border border-gray-200">
+                              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <span className="text-blue-600 font-bold text-xl">
+                                  1
+                                </span>
+                              </div>
+                              <h4 className="font-semibold text-gray-800 mb-2">
+                                Upload
+                              </h4>
+                              <p className="text-sm text-gray-600">
+                                Upload CSV, JSON, XML, or netCDF files
+                              </p>
+                            </div>
+                            <div className="p-6 bg-white rounded-xl shadow-md border border-gray-200">
+                              <div className="w-12 h-12 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <span className="text-teal-600 font-bold text-xl">
+                                  2
+                                </span>
+                              </div>
+                              <h4 className="font-semibold text-gray-800 mb-2">
+                                Ask
+                              </h4>
+                              <p className="text-sm text-gray-600">
+                                Ask questions in natural language
+                              </p>
+                            </div>
+                            <div className="p-6 bg-white rounded-xl shadow-md border border-gray-200">
+                              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <span className="text-green-600 font-bold text-xl">
+                                  3
+                                </span>
+                              </div>
+                              <h4 className="font-semibold text-gray-800 mb-2">
+                                Analyze
+                              </h4>
+                              <p className="text-sm text-gray-600">
+                                Get insights with AI-powered responses
+                              </p>
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() =>
+                              document
+                                .getElementById("data-file-upload-hidden")
+                                ?.click()
+                            }
+                            className="px-8 py-4 bg-gradient-to-r from-blue-600 to-teal-600 text-white rounded-xl hover:from-blue-700 hover:to-teal-700 transition-all font-semibold text-lg shadow-lg hover:shadow-xl transform hover:scale-105"
+                          >
+                            <FiUpload className="inline mr-2" size={24} />
+                            Upload Your First Dataset
+                          </button>
+                        </div>
+                      ) : !activeDatasetId ? (
+                        /* No Dataset Selected State */
+                        <div className="flex-1 flex items-center justify-center p-8 text-center">
+                          <div>
+                            <FiDatabase
+                              size={48}
+                              className="text-gray-300 mx-auto mb-4"
+                            />
+                            <p className="text-gray-600 text-lg mb-2">
+                              Select a dataset to start chatting
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              Choose from the list on the left
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        /* Chat Area */
+                        <>
+                          {/* Messages */}
+                          <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+                            {(dataChatMessages[activeDatasetId] || []).map(
+                              (msg, idx) => (
+                                <ChatMessage
+                                  key={idx}
+                                  message={msg.message}
+                                  role={msg.role}
+                                  timestamp={msg.timestamp}
+                                  sources={msg.sources}
+                                  isError={msg.isError}
+                                  errorDetails={msg.error_details}
+                                />
+                              )
+                            )}
+
+                            {/* Typing Indicator */}
+                            {dataChatMessageLoading && (
+                              <div className="flex gap-3 animate-fadeIn">
+                                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 text-gray-700 flex items-center justify-center">
+                                  <BsRobot size={16} />
+                                </div>
+                                <div className="px-4 py-3 rounded-2xl bg-white border border-gray-200 shadow-sm">
+                                  <div className="flex gap-1">
+                                    <span className="w-2 h-2 bg-gray-400 rounded-full typing-dot"></span>
+                                    <span className="w-2 h-2 bg-gray-400 rounded-full typing-dot"></span>
+                                    <span className="w-2 h-2 bg-gray-400 rounded-full typing-dot"></span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            <div ref={chatMessagesEndRef} />
+                          </div>
+
+                          {/* Input */}
+                          <DataChatInput
+                            value={dataChatInput}
+                            onChange={setDataChatInput}
+                            onSend={() => {
+                              if (dataChatInput.trim() && !dataChatMessageLoading) {
+                                sendDataChatMessage(dataChatInput);
+                              }
+                            }}
+                            disabled={!activeDatasetId}
+                            loading={dataChatMessageLoading}
+                            suggestions={[
+                              "What is the average temperature?",
+                              "Show me salinity trends",
+                              "Summarize this dataset",
+                            ]}
+                          />
+                        </>
+                      )}
+                    </div>
+
+                    {/* Right Sidebar - Context Panel (25% on desktop, hidden on tablet/mobile) */}
+                    <div className="hidden lg:block lg:w-1/4">
+                      <DataChatSidebar
+                        activeDataset={uploadedDatasets.find(
+                          (d) => d.id === activeDatasetId
+                        )}
+                        showDebug={showDebugInfo}
+                        lastErrorDetails={
+                          (() => {
+                            const messages = dataChatMessages[activeDatasetId] || [];
+                            const lastError = [...messages].reverse().find(msg => msg.isError && msg.error_details);
+                            return lastError?.error_details || null;
+                          })()
+                        }
+                        onTestRetrieval={handleTestRetrieval}
+                        onExportChat={handleExportChatHistory}
+                        onDownloadDataset={() => {
+                          const dataset = uploadedDatasets.find(d => d.id === activeDatasetId);
+                          if (dataset) handleDatasetDownload(dataset);
+                        }}
+                        onShareDataset={handleShareDataset}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Hidden file input */}
+                  <input
+                    id="data-file-upload-hidden"
+                    type="file"
+                    className="hidden"
+                    accept=".csv,.json,.xml,.nc"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        uploadDataFile(e.target.files[0]);
+                        e.target.value = "";
+                      }
+                    }}
+                    disabled={dataUploadLoading}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
-
     </div>
   );
 };
-
-
 
 export default AiCard;

@@ -2,11 +2,16 @@ import React, { useState, useEffect } from 'react';
 import axiosInstance from '../../config/axios.config';
 import { toast } from 'react-toastify';
 import { FiCalendar, FiMap } from 'react-icons/fi';
+import { useTimePeriod } from './Dashboard';
+import { getDateRange } from '../../utils/timePeriodHelper';
 import BiodiversityMap from '../../components/Dashboard/BiodiversityMap';
 import TemporalControls from '../../components/Dashboard/TemporalControls';
 import TimeSeriesCharts from '../../components/Dashboard/TimeSeriesCharts';
 
 function BiodiversityAnalysis() {
+  // Get time period from context
+  const { timePeriod } = useTimePeriod();
+  
   // Biodiversity visualization state
   const [biodiversityFilters, setBiodiversityFilters] = useState(() => {
     const endDate = new Date();
@@ -26,10 +31,20 @@ function BiodiversityAnalysis() {
   const [biodiversityLoading, setBiodiversityLoading] = useState(false);
   const [biodiversityError, setBiodiversityError] = useState(null);
 
-  // Load initial data on mount
+  // Update filters when global time period changes
+  useEffect(() => {
+    const { startDate, endDate } = getDateRange(timePeriod);
+    setBiodiversityFilters(prev => ({
+      ...prev,
+      startDate: startDate ? startDate.toISOString().split('T')[0] : prev.startDate,
+      endDate: endDate.toISOString().split('T')[0]
+    }));
+  }, [timePeriod]);
+
+  // Load initial data on mount and when filters change
   useEffect(() => {
     handleApplyFilters();
-  }, []);
+  }, [biodiversityFilters.startDate, biodiversityFilters.endDate, biodiversityFilters.scientificName]);
 
   // Fetch biodiversity heatmap data
   const fetchBiodiversityHeatmap = async () => {

@@ -1,4 +1,5 @@
 import jsPDF from "jspdf";
+import html2pdf from "html2pdf.js";
 
 /**
  * Generate a professional PDF report for species identification
@@ -322,7 +323,97 @@ export const convertImageToDataURL = async (imageUrl) => {
 };
 
 /**
- * Generate PDF from HTML research document returned by n8n
+ * Sanitize filename from title
+ * @private
+ */
+function sanitizeFilename(title) {
+  const cleanTitle = title
+    .replace(/<[^>]*>/g, '') // Remove HTML tags
+    .replace(/[^a-zA-Z0-9\s-]/g, '') // Remove special chars
+    .replace(/\s+/g, '_') // Replace spaces with underscores
+    .substring(0, 50); // Limit length
+  
+  return `${cleanTitle}_${Date.now()}.pdf`;
+}
+
+/**
+ * Helper function to generate PDF from container element
+ * @private
+ */
+function generatePDFFromContainer(container, title, resolve, reject) {
+  let containerAppended = false;
+  
+  try {
+    containerAppended = container.parentNode === document.body;
+    
+    // Configure html2pdf options
+    const opt = {
+      margin: [10, 10, 10, 10], // [top, left, bottom, right] in mm
+      filename: sanitizeFilename(title),
+      image: { type: 'jpeg', quality: 0.95 },
+      html2canvas: {
+        scale: 2, // Higher scale for better quality
+        useCORS: true,
+        letterRendering: true,
+        logging: false,
+        scrollY: 0,
+        scrollX: 0,
+        windowWidth: 794, // A4 width in pixels at 96 DPI
+        windowHeight: 1123 // A4 height in pixels at 96 DPI
+      },
+      jsPDF: {
+        unit: 'mm',
+        format: 'a4',
+        orientation: 'portrait',
+        compress: true
+      },
+      pagebreak: {
+        mode: ['avoid-all', 'css', 'legacy'],
+        before: '.page-break-before',
+        after: '.page-break-after',
+        avoid: ['section', '.finding-item', '.analysis-section']
+      }
+    };
+    
+    // Generate PDF with guaranteed cleanup
+    const cleanup = () => {
+      try {
+        if (container.parentNode) {
+          document.body.removeChild(container);
+        }
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+    };
+    
+    html2pdf()
+      .set(opt)
+      .from(container)
+      .save()
+      .then(() => {
+        cleanup();
+        resolve(opt.filename);
+      })
+      .catch((error) => {
+        cleanup();
+        reject(error);
+      });
+      
+  } catch (error) {
+    // Clean up on synchronous error
+    try {
+      if (container.parentNode) {
+        document.body.removeChild(container);
+      }
+    } catch (e) {
+      // Ignore cleanup errors
+    }
+    reject(error);
+  }
+}
+
+/**
+ * Generate PDF from HTML research document using html2pdf.js
  * @param {Object} researchDocument - Object containing { body, css, title }
  * @returns {Promise<String>} filename - Name of the generated PDF file
  */
@@ -331,7 +422,7 @@ export const generateResearchReportPDF = async (researchDocument) => {
   
   return new Promise((resolve, reject) => {
     try {
-      // Create a hidden container to render HTML
+      // Create a temporary container
       const container = document.createElement('div');
       container.style.position = 'absolute';
       container.style.left = '-9999px';
@@ -339,9 +430,33 @@ export const generateResearchReportPDF = async (researchDocument) => {
       container.style.width = '210mm'; // A4 width
       container.style.backgroundColor = 'white';
       
-      // Inject CSS
+      // Inject CSS with @page rules for print
       const styleElement = document.createElement('style');
-      styleElement.textContent = css;
+      styleElement.textContent = `
+        ${css}
+        
+        /* Additional print-specific styles */
+        @page {
+          size: A4;
+          margin: 20mm;
+        }
+        
+        @media print {
+          body {
+            margin: 0;
+            padding: 0;
+          }
+        }
+        
+        /* Ensure proper page breaks */
+        section {
+          page-break-inside: avoid;
+        }
+        
+        h1, h2, h3 {
+          page-break-after: avoid;
+        }
+      `;
       container.appendChild(styleElement);
       
       // Inject HTML body
@@ -352,45 +467,117 @@ export const generateResearchReportPDF = async (researchDocument) => {
       // Append to document
       document.body.appendChild(container);
       
-      // Create PDF
-      const doc = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
+      // Wait for fonts to load
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(() => {
+          generatePDFFromContainer(container, title, resolve, reject);
+        }).catch(() => {
+          // Fallback if font loading fails
+          setTimeout(() => {
+            generatePDFFromContainer(container, title, resolve, reject);
+          }, 1000);
+        });
+      } else {
+        // Fallback for browsers without Font Loading API
+        setTimeout(() => {
+          generatePDFFromContainer(container, title, resolve, reject);
+        }, 1500);
+      }
       
-      // Convert HTML to PDF
-      doc.html(container, {
-        callback: function(pdf) {
-          // Clean up
-          document.body.removeChild(container);
-          
-          // Generate filename from title
-          const sanitizedTitle = title
-            .replace(/<[^>]*>/g, '') // Remove HTML tags
-            .replace(/[^a-zA-Z0-9\s-]/g, '') // Remove special chars
-            .replace(/\s+/g, '_') // Replace spaces with underscores
-            .substring(0, 50); // Limit length
-          
-          const filename = `${sanitizedTitle}_${Date.now()}.pdf`;
-          
-          // Save PDF
-          pdf.save(filename);
-          resolve(filename);
-        },
-        x: 10,
-        y: 10,
-        width: 190, // A4 width minus margins
-        windowWidth: 800, // Virtual window width for rendering
-        html2canvas: {
-          scale: 0.5, // Adjust for better quality vs file size
-          logging: false,
-          letterRendering: true,
-          useCORS: true
-        }
-      });
     } catch (error) {
       console.error('Error generating research PDF:', error);
+      reject(error);
+    }
+  });
+};
+
+/**
+ * Fallback PDF generation using jsPDF (if html2pdf fails)
+ * @param {Object} researchDocument - Object containing { body, css, title }
+ * @returns {Promise<String>} filename
+ */
+export const generateResearchReportPDFFallback = async (researchDocument) => {
+  const { body, css, title } = researchDocument;
+  
+  return new Promise((resolve, reject) => {
+    let container = null;
+    
+    // Shared cleanup helper
+    const cleanup = () => {
+      try {
+        if (container && container.parentNode) {
+          document.body.removeChild(container);
+        }
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+    };
+    
+    try {
+      container = document.createElement('div');
+      container.style.position = 'absolute';
+      container.style.left = '-9999px';
+      container.style.top = '0';
+      container.style.width = '210mm';
+      container.style.backgroundColor = 'white';
+      
+      const styleElement = document.createElement('style');
+      styleElement.textContent = css;
+      container.appendChild(styleElement);
+      
+      const contentDiv = document.createElement('div');
+      contentDiv.innerHTML = body;
+      container.appendChild(contentDiv);
+      
+      document.body.appendChild(container);
+      
+      // Wait for fonts
+      const fontLoadPromise = document.fonts?.ready || Promise.resolve();
+      
+      fontLoadPromise.then(() => {
+        // Additional delay for rendering
+        setTimeout(() => {
+          try {
+            const doc = new jsPDF({
+              orientation: 'portrait',
+              unit: 'mm',
+              format: 'a4',
+              compress: true
+            });
+            
+            doc.html(container, {
+              callback: function(pdf) {
+                cleanup();
+                const filename = sanitizeFilename(title);
+                pdf.save(filename);
+                resolve(filename);
+              },
+              x: 10,
+              y: 10,
+              width: 190,
+              windowWidth: 794,
+              html2canvas: {
+                scale: 2,
+                logging: false,
+                letterRendering: true,
+                useCORS: true,
+                scrollY: 0,
+                scrollX: 0
+              }
+            });
+          } catch (error) {
+            cleanup();
+            reject(error);
+          }
+        }, 500); // 500ms delay for rendering
+      }).catch((error) => {
+        cleanup();
+        reject(error);
+      });
+      
+    } catch (error) {
+      console.error('Fallback PDF generation error:', error);
+      cleanup();
       reject(error);
     }
   });
@@ -403,17 +590,22 @@ export const generateResearchReportPDF = async (researchDocument) => {
 export const previewResearchDocument = (researchDocument) => {
   const { body, css, title } = researchDocument;
   
-  // Create full HTML document
+  // Sanitize title for use in <title> tag (strip HTML tags)
+  const sanitizedTitle = title ? title.replace(/<[^>]*>/g, '').trim() : 'Research Document';
+  
+  // Create full HTML document with proper structure
   const htmlContent = `
     <!DOCTYPE html>
     <html lang="en">
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      ${title}
+      <title>${sanitizedTitle}</title>
       <style>${css}</style>
     </head>
-    ${body}
+    <body>
+      ${body}
+    </body>
     </html>
   `;
   
