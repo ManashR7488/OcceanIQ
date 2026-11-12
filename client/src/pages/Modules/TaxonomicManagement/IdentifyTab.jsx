@@ -1,127 +1,60 @@
-import React, { useState, useEffect, useRef } from "react";
-import { FiUpload, FiX, FiDownload, FiEye, FiSearch } from "react-icons/fi";
+import React, { useState, useRef } from "react";
+import { 
+  FiUpload, 
+  FiX, 
+  FiDownload, 
+  FiExternalLink, 
+  FiInfo, 
+  FiActivity, 
+  FiDroplet, 
+  FiMapPin, 
+  FiGlobe,
+  FiTarget,
+  FiLayers
+} from "react-icons/fi";
+import { FaRulerHorizontal, FaWeightHanging } from "react-icons/fa";
+import { BiWater } from "react-icons/bi";
+import { MdOutlineScience } from "react-icons/md";
 import { toast } from "react-toastify";
 import { generateSpeciesReportPDF } from "../../../utils/pdfGenerator";
-import {
-  searchSpecies,
-  getPopularSpecies,
-  getAllFamilies,
-  getSpeciesByFamily,
-  SPECIES_DATABASE,
-} from "../../../data/speciesDatabase";
-import useDebounce from "../../../hooks/useDebounce";
+import axios from "../../../config/axios.config";
 
 const IdentifyTab = ({ onSelectSpecies, refreshTrigger }) => {
+  // Input mode state
+  const [inputMode, setInputMode] = useState("name"); // 'name' | 'image'
+  const [speciesNameInput, setSpeciesNameInput] = useState("");
+  
+  // Image upload state
   const [selectedImage, setSelectedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
-  const [showSearchResults, setShowSearchResults] = useState(false);
-  const [selectedCandidate, setSelectedCandidate] = useState(null);
-  const [showDetails, setShowDetails] = useState(false);
-  const [exporting, setExporting] = useState(false);
   const [dragActive, setDragActive] = useState(false);
-  const [selectedFamily, setSelectedFamily] = useState("");
+  
+  // Results and display state
+  const [identificationResult, setIdentificationResult] = useState(null);
+  const [showDetails, setShowDetails] = useState(false);
+  const [apiError, setApiError] = useState(null);
+  
+  // Processing state
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingProgress, setProcessingProgress] = useState(0);
   const [processingMessage, setProcessingMessage] = useState("");
+  const [exporting, setExporting] = useState(false);
 
-  // Refs for managing processing sessions and intervals
+  // Refs
   const processingSessionRef = useRef(0);
-  const intervalsRef = useRef([]);
 
-  // Debounce search query to avoid excessive filtering
-  const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-  /**
-   * Species Identification: STATIC DATABASE APPROACH
-   *
-   * This MVP implementation uses a curated static database of 20+ common marine fish species
-   * instead of AI-powered image recognition APIs. This approach:
-   *
-   * ✅ Requires no API keys or external dependencies
-   * ✅ Works completely offline
-   * ✅ Provides instant results with zero latency
-   * ✅ Perfect for hackathon demos and MVP validation
-   * ✅ Can be upgraded to real AI-powered identification later
-   *
-   * Users search for species by name and can optionally upload an image for visual reference.
-   */
-
-  // Cleanup intervals on unmount
-  useEffect(() => {
-    return () => {
-      intervalsRef.current.forEach(clearInterval);
-      intervalsRef.current = [];
-    };
-  }, []);
-
-  // Perform search when debounced query changes
-  useEffect(() => {
-    if (debouncedSearchQuery.length >= 2) {
-      const results = searchSpecies(debouncedSearchQuery);
-      setSearchResults(results);
-      setShowSearchResults(true);
-    } else {
-      setSearchResults([]);
-      setShowSearchResults(false);
-    }
-  }, [debouncedSearchQuery]);
-
-  // Handle search query change
-  const handleSearchChange = (e) => {
-    const query = e.target.value;
-    setSearchQuery(query);
+  // Handle species name input change
+  const handleSpeciesNameChange = (e) => {
+    setSpeciesNameInput(e.target.value);
+    setApiError(null);
   };
 
-  // Handle selecting a species from search results
-  const handleSelectSpecies = (species) => {
-    setSelectedCandidate({
-      scientificName: species.scientificName,
-      commonName: species.commonNames[0],
-      speciesData: species,
-    });
-    setShowDetails(true);
-    setShowSearchResults(false);
-    setSearchQuery(""); // Clear search after selection
-    
-    // Notify parent component if callback provided
-    if (typeof onSelectSpecies === 'function') {
-      onSelectSpecies(species);
-    }
-  };
-
-  // Handle popular species quick select
-  const handlePopularSpeciesClick = (species) => {
-    handleSelectSpecies(species);
-  };
-
-  // Handle family filter
-  const handleFamilyFilter = (family) => {
-    setSelectedFamily(family);
-    if (family) {
-      const results = getSpeciesByFamily(family);
-      setSearchResults(results);
-      setShowSearchResults(true);
-    } else {
-      setSearchResults([]);
-      setShowSearchResults(false);
-    }
-  };
-
-  // Clear search and filters
-  const handleClearSearch = () => {
-    setSearchQuery("");
-    setSelectedFamily("");
-    setSearchResults([]);
-    setShowSearchResults(false);
-  };
-
-  // Handle file selection (optional - for visual reference only)
+  // Handle file selection - auto-triggers identification
   const handleFileSelect = (file) => {
     // Guard against concurrent uploads
     if (isProcessing) {
-      toast.info("Please wait, still identifying the previous image...");
+      toast.info("Please wait, still identifying...");
       return;
     }
 
@@ -145,100 +78,99 @@ const IdentifyTab = ({ onSelectSpecies, refreshTrigger }) => {
     const reader = new FileReader();
     reader.onloadend = () => {
       setImagePreview(reader.result);
-      // Start simulated AI processing after preview is ready
-      simulateSpeciesIdentification();
+      // Auto-trigger identification after preview is ready, passing file to avoid state timing issues
+      identifySpeciesViaAPI(file);
     };
     reader.readAsDataURL(file);
 
     toast.info("Processing image...");
   };
 
-  // Simulate AI-powered species identification with realistic processing
-  const simulateSpeciesIdentification = async () => {
-    // Validate database availability
-    if (!Array.isArray(SPECIES_DATABASE) || SPECIES_DATABASE.length === 0) {
-      toast.error("No species available in database.");
-      setIsProcessing(false);
-      return;
-    }
-
-    // Create new session ID and invalidate any previous processing
-    const sessionId = ++processingSessionRef.current;
-    
+  // Real API call to identify species via n8n webhook
+  const identifySpeciesViaAPI = async (fileParam = null) => {
     setIsProcessing(true);
     setProcessingProgress(0);
-    setProcessingMessage("Uploading image...");
+    setProcessingMessage("Connecting to identification service...");
+    setApiError(null);
 
-    // Simulate processing with staged progress updates
-    const stages = [
-      { progress: 30, message: "Analyzing features...", duration: 800 },
-      { progress: 60, message: "Matching species database...", duration: 1000 },
-      { progress: 90, message: "Finalizing results...", duration: 700 },
-      { progress: 100, message: "Complete!", duration: 500 },
-    ];
+    try {
+      const formData = new FormData();
 
-    // Animate progress through stages
-    for (const stage of stages) {
-      await new Promise((resolve) => {
-        const steps = 20;
-        const stepDuration = stage.duration / steps;
-        let tick = 0;
-
-        const intervalId = setInterval(() => {
-          // Check if session is still valid
-          if (processingSessionRef.current !== sessionId) {
-            clearInterval(intervalId);
-            return resolve();
-          }
-
-          tick++;
-          setProcessingProgress((prev) => {
-            const remaining = stage.progress - prev;
-            const increment = Math.max(remaining / (steps - tick + 1), 0);
-            const next = Math.min(prev + increment, stage.progress);
-            return next;
-          });
-          setProcessingMessage(stage.message);
-
-          if (tick >= steps) {
-            clearInterval(intervalId);
-            resolve();
-          }
-        }, stepDuration);
-
-        // Track interval for cleanup
-        intervalsRef.current.push(intervalId);
-      });
-
-      // Check if session is still valid after stage
-      if (processingSessionRef.current !== sessionId) {
-        return; // Processing was cancelled
-      }
-    }
-
-    // Final check before selecting species
-    if (processingSessionRef.current !== sessionId) {
-      return; // Processing was cancelled
-    }
-
-    // Select random species from database
-    const randomIndex = Math.floor(Math.random() * SPECIES_DATABASE.length);
-    const randomSpecies = SPECIES_DATABASE[randomIndex];
-    const speciesName = randomSpecies?.commonNames?.[0] || randomSpecies?.scientificName || "Unknown species";
-
-    // Display the "identified" species (this will also notify parent via handleSelectSpecies)
-    handleSelectSpecies(randomSpecies);
-
-    // Reset processing state
-    setTimeout(() => {
-      // Final session check before showing success
-      if (processingSessionRef.current === sessionId) {
+      // Prefer passed-in file parameter over state to avoid timing issues
+      const imageFile = fileParam || selectedImage;
+      
+      if (inputMode === "image" && imageFile) {
+        formData.append("speciesImage", imageFile);
+        setProcessingMessage("Uploading to cloud storage...");
+      } else if (inputMode === "name" && speciesNameInput) {
+        formData.append("speciesName", speciesNameInput);
+      } else {
+        toast.error("Please provide a species name or upload an image");
         setIsProcessing(false);
-        setProcessingProgress(0);
-        setProcessingMessage("");
-        toast.success(`Species identified: ${speciesName}`);
+        return;
       }
-    }, 500);
+
+      // Simulate progress for UX
+      const progressInterval = setInterval(() => {
+        setProcessingProgress((prev) => {
+          if (prev >= 90) return prev;
+          return prev + Math.random() * 10;
+        });
+      }, 800);
+
+      setProcessingMessage("Analyzing with AI taxonomy service...");
+
+      const response = await axios.post("/taxonomy/identify", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+        timeout: 120000, // 120 seconds (slightly longer than backend timeout)
+      });
+      console.log(response.data)
+      clearInterval(progressInterval);
+      setProcessingProgress(100);
+      setProcessingMessage("Complete!");
+
+      // Set identification result from API
+      setIdentificationResult(response.data.data.species);
+      setShowDetails(true);
+      
+      // Notify parent component if callback provided
+      if (typeof onSelectSpecies === "function") {
+        onSelectSpecies(response.data.data.species);
+      }
+
+      toast.success("Species identified successfully!");
+    } catch (error) {
+      console.error("Identification error:", error);
+
+      let errorMessage = "Identification failed";
+
+      if (error.code === "ECONNABORTED") {
+        errorMessage =
+          "Identification timeout. The service is taking too long. Please try again.";
+        toast.error("Request timeout");
+      } else if (error.response?.status === 504) {
+        errorMessage =
+          "Taxonomy service timeout. The identification is taking too long.";
+        toast.error("Service timeout");
+      } else if (error.response?.status === 503) {
+        errorMessage =
+          "Cannot connect to taxonomy service. Please ensure the microservice is running.";
+        toast.error("Service unavailable");
+      } else if (error.response?.status === 401) {
+        errorMessage = "Please log in to use species identification.";
+        toast.error("Authentication required");
+      } else {
+        errorMessage =
+          error.response?.data?.message || "Identification failed";
+        toast.error("Identification failed");
+      }
+
+      setApiError(errorMessage);
+    } finally {
+      setIsProcessing(false);
+      setProcessingProgress(0);
+      setProcessingMessage("");
+    }
   };
 
   // Handle file input change
@@ -276,16 +208,13 @@ const IdentifyTab = ({ onSelectSpecies, refreshTrigger }) => {
   const handleClearImage = () => {
     // Invalidate current processing session
     processingSessionRef.current++;
-    
-    // Clear all active intervals
-    intervalsRef.current.forEach(clearInterval);
-    intervalsRef.current = [];
-    
+
     setSelectedImage(null);
     setImagePreview(null);
     setIsProcessing(false);
     setProcessingProgress(0);
     setProcessingMessage("");
+    setApiError(null);
   };
 
   /**
@@ -293,38 +222,39 @@ const IdentifyTab = ({ onSelectSpecies, refreshTrigger }) => {
    * Uses jsPDF to generate PDF entirely in browser with embedded image
    */
   const handleExportPDF = async () => {
-    if (!selectedCandidate) {
-      toast.error("Please select a species first");
+    if (!identificationResult) {
+      toast.error("Please identify a species first");
       return;
     }
 
     try {
       setExporting(true);
-    //   toast.loading("Generating PDF...", { id: "export-pdf" });
 
-      const identificationData = {
-        uploadedImageUrl:
-          imagePreview || selectedCandidate.speciesData.images?.[0] || null,
-      };
-
-       const filename = await toast.promise(
-      generateSpeciesReportPDF(
-        selectedCandidate.speciesData,
+      const filename = await toast.promise(
+        generateSpeciesReportPDF(
+          identificationResult,
+          {
+            uploadedImageUrl:
+              imagePreview ||
+              identificationResult.uploadedImageUrl ||
+              identificationResult.images?.[0] ||
+              null,
+          },
+          {
+            includeReferences: true,
+            includeImage: !!(
+              imagePreview ||
+              identificationResult.uploadedImageUrl ||
+              identificationResult.images?.[0]
+            ),
+          }
+        ),
         {
-          uploadedImageUrl:
-            imagePreview || selectedCandidate.speciesData.images?.[0] || null,
-        },
-        {
-          includeReferences: true,
-          includeImage: !!(imagePreview || selectedCandidate.speciesData.images?.[0]),
+          loading: "Generating PDF...",
+          success: (filename) => `PDF downloaded: ${filename}`,
+          error: "Failed to generate PDF. Please try again.",
         }
-      ),
-      {
-        loading: "Generating PDF...",
-        success: (filename) => `PDF downloaded: ${filename}`,
-        error: "Failed to generate PDF. Please try again.",
-      }
-    );
+      );
     } catch (error) {
       console.error("PDF export error:", error);
     } finally {
@@ -332,18 +262,16 @@ const IdentifyTab = ({ onSelectSpecies, refreshTrigger }) => {
     }
   };
 
-  // Try another search/image
+  // Try another identification
   const handleTryAnother = () => {
     // Invalidate current processing session
     processingSessionRef.current++;
-    
-    // Clear all active intervals
-    intervalsRef.current.forEach(clearInterval);
-    intervalsRef.current = [];
-    
+
     handleClearImage();
     setShowDetails(false);
-    setSelectedCandidate(null);
+    setIdentificationResult(null);
+    setSpeciesNameInput("");
+    setApiError(null);
   };
 
   return (
@@ -351,424 +279,531 @@ const IdentifyTab = ({ onSelectSpecies, refreshTrigger }) => {
       {/* Instructions */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <p className="text-blue-800 text-sm">
-          <strong>Instructions:</strong> Search for fish species by scientific
-          or common name to view detailed taxonomic, morphological, and
-          ecological information. You can also optionally upload an image for
-          visual reference. The database contains curated information about 20+
-          common marine fish species.
+          <strong>Instructions:</strong> Identify fish species by entering a
+          scientific or common name, or by uploading an image. Our n8n-powered
+          identification service provides comprehensive taxonomic, morphological,
+          and ecological information sourced from multiple scientific databases.
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Section 1: Search & Image Upload (Left Column) */}
+        {/* Section 1: Input Selection (Left Column) */}
         <div className="lg:col-span-1 space-y-6">
-          {/* Search Box */}
+          {/* Input Mode Selection */}
           <div className="bg-white rounded-xl shadow-md p-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <FiSearch className="text-cyan-600" />
-              Search Species
+            <h2 className="text-xl font-bold text-gray-800 mb-4">
+              Identify Species
             </h2>
 
-            {/* Search Input */}
-            <div className="relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={handleSearchChange}
-                placeholder="Search by scientific or common name..."
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-              />
-              {searchQuery && (
-                <button
-                  onClick={handleClearSearch}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  <FiX size={20} />
-                </button>
-              )}
-            </div>
-
-            {/* Family Filter */}
-            <div className="mt-4">
-              <select
-                value={selectedFamily}
-                onChange={(e) => handleFamilyFilter(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-              >
-                <option value="">All Families</option>
-                {getAllFamilies().map((family) => (
-                  <option key={family} value={family}>
-                    {family}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Popular Species Quick Links */}
-            <div className="mt-6">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">
-                Popular Species:
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {getPopularSpecies().map((species) => (
-                  <button
-                    key={species.scientificName}
-                    onClick={() => handlePopularSpeciesClick(species)}
-                    className="px-3 py-1.5 bg-cyan-50 text-cyan-700 rounded-full text-sm hover:bg-cyan-100 transition-colors"
-                  >
-                    {species.commonNames[0]}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Optional Image Upload */}
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <FiUpload className="text-cyan-600" />
-              Optional: Upload Image for Reference
-            </h2>
-
-            {!imagePreview ? (
-              <div
-                className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-                  isProcessing
-                    ? "border-gray-200 bg-gray-50 cursor-not-allowed opacity-60"
-                    : dragActive
-                    ? "border-cyan-500 bg-cyan-50"
-                    : "border-gray-300 hover:border-cyan-400"
+            {/* Mode Toggle */}
+            <div className="flex gap-2 mb-4 p-1 bg-gray-100 rounded-lg">
+              <button
+                onClick={() => setInputMode("name")}
+                className={`flex-1 px-4 py-2 rounded-md font-medium transition-colors ${
+                  inputMode === "name"
+                    ? "bg-white text-cyan-700 shadow-sm"
+                    : "text-gray-600 hover:text-gray-800"
                 }`}
-                onDragEnter={handleDrag}
-                onDragLeave={handleDrag}
-                onDragOver={handleDrag}
-                onDrop={handleDrop}
-                aria-disabled={isProcessing}
               >
-                <FiUpload className={`text-5xl mx-auto mb-4 ${isProcessing ? 'text-gray-300' : 'text-gray-400'}`} />
-                <p className="text-gray-600 mb-2">
-                  Drag and drop an image here, or click to select
-                </p>
-                <p className="text-sm text-gray-500 mb-4">
-                  Supported formats: JPG, JPEG, PNG (Max 10MB)
-                </p>
-                <input
-                  type="file"
-                  accept="image/jpeg,image/jpg,image/png"
-                  onChange={handleFileInputChange}
-                  className="hidden"
-                  id="fileInput"
-                  disabled={isProcessing}
-                />
-                <label
-                  htmlFor="fileInput"
-                  className={`inline-block px-6 py-2 rounded-lg transition-colors ${
-                    isProcessing
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : 'bg-cyan-600 text-white hover:bg-cyan-700 cursor-pointer'
-                  }`}
-                  aria-disabled={isProcessing}
-                >
-                  {isProcessing ? 'Processing...' : 'Select Image'}
-                </label>
-              </div>
-            ) : (
+                By Name
+              </button>
+              <button
+                onClick={() => setInputMode("image")}
+                className={`flex-1 px-4 py-2 rounded-md font-medium transition-colors ${
+                  inputMode === "image"
+                    ? "bg-white text-cyan-700 shadow-sm"
+                    : "text-gray-600 hover:text-gray-800"
+                }`}
+              >
+                By Image
+              </button>
+            </div>
+
+            {/* Name Input Mode */}
+            {inputMode === "name" && (
               <div className="space-y-4">
-                {/* Image Preview */}
-                <div className="relative">
-                  <img
-                    src={imagePreview}
-                    alt="Preview"
-                    className="w-full max-h-96 object-contain rounded-lg border border-gray-200"
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Species Name
+                  </label>
+                  <input
+                    type="text"
+                    value={speciesNameInput}
+                    onChange={handleSpeciesNameChange}
+                    placeholder="Enter scientific or common name (e.g., Gadus morhua, Atlantic Cod)"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                    disabled={isProcessing}
                   />
-                  <button
-                    onClick={handleClearImage}
-                    className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-lg"
-                    aria-label="Remove image"
-                  >
-                    <FiX />
-                  </button>
                 </div>
+                <button
+                  onClick={identifySpeciesViaAPI}
+                  disabled={isProcessing || speciesNameInput.length < 2}
+                  className={`w-full px-6 py-3 rounded-lg font-semibold transition-all ${
+                    isProcessing || speciesNameInput.length < 2
+                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      : "bg-gradient-to-r from-cyan-600 to-blue-600 text-white hover:shadow-lg"
+                  }`}
+                >
+                  {isProcessing ? "Identifying..." : "Identify Species"}
+                </button>
+                {apiError && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                    <p className="text-red-700 text-sm">{apiError}</p>
+                    <button
+                      onClick={() => setApiError(null)}
+                      className="mt-2 text-red-600 hover:text-red-800 text-sm font-medium"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Image Upload Mode */}
+            {inputMode === "image" && (
+              <div>
+                {!imagePreview ? (
+                  <div
+                    className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                      isProcessing
+                        ? "border-gray-200 bg-gray-50 cursor-not-allowed opacity-60"
+                        : dragActive
+                        ? "border-cyan-500 bg-cyan-50"
+                        : "border-gray-300 hover:border-cyan-400"
+                    }`}
+                    onDragEnter={handleDrag}
+                    onDragLeave={handleDrag}
+                    onDragOver={handleDrag}
+                    onDrop={handleDrop}
+                    aria-disabled={isProcessing}
+                  >
+                    <FiUpload
+                      className={`text-5xl mx-auto mb-4 ${
+                        isProcessing ? "text-gray-300" : "text-gray-400"
+                      }`}
+                    />
+                    <p className="text-gray-600 mb-2">
+                      Drag and drop an image here, or click to select
+                    </p>
+                    <p className="text-sm text-gray-500 mb-4">
+                      Supported formats: JPG, JPEG, PNG (Max 10MB)
+                    </p>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png"
+                      onChange={handleFileInputChange}
+                      className="hidden"
+                      id="fileInput"
+                      disabled={isProcessing}
+                    />
+                    <label
+                      htmlFor="fileInput"
+                      className={`inline-block px-6 py-2 rounded-lg transition-colors ${
+                        isProcessing
+                          ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                          : "bg-cyan-600 text-white hover:bg-cyan-700 cursor-pointer"
+                      }`}
+                      aria-disabled={isProcessing}
+                    >
+                      {isProcessing ? "Processing..." : "Select Image"}
+                    </label>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="relative">
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="w-full max-h-96 object-contain rounded-lg border border-gray-200"
+                      />
+                      <button
+                        onClick={handleClearImage}
+                        className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-lg"
+                        aria-label="Remove image"
+                      >
+                        <FiX />
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {apiError && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-4">
+                    <p className="text-red-700 text-sm">{apiError}</p>
+                    <button
+                      onClick={() => setApiError(null)}
+                      className="mt-2 text-red-600 hover:text-red-800 text-sm font-medium"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
 
-        {/* Section 2: Search Results (Right Column) */}
+        {/* Section 2: Processing Status / Results (Right Column) */}
         <div className="lg:col-span-2 bg-white rounded-xl shadow-md p-6">
           <h2 className="text-xl font-bold text-gray-800 mb-4">
-            {showSearchResults ? "Search Results" : "Species Database"}
+            {showDetails ? "Identification Result" : "Ready to Identify"}
           </h2>
 
-          {!showSearchResults || searchResults.length === 0 ? (
+          {!showDetails ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <FiSearch className="text-6xl text-gray-300 mb-4" />
+              <FiUpload className="text-6xl text-gray-300 mb-4" />
               <p className="text-gray-500">
-                Type at least 2 characters to search the curated species database
+                Select an input mode and provide a species name or image
               </p>
             </div>
-          ) : (
-            <div className="space-y-3 max-h-96 overflow-y-auto">
-              {searchResults.map((species) => (
-                <div
-                  key={species.scientificName}
-                  onClick={() => handleSelectSpecies(species)}
-                  className="border border-gray-200 rounded-lg p-4 hover:shadow-md hover:border-cyan-400 transition-all cursor-pointer"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1">
-                      {/* Rank Badge */}
-                      {/* <span className="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-xs font-bold rounded mb-2">
-                        #{candidate.rank}
-                      </span> */}
-
-                      {/* Provider Badge */}
-                      {/* {candidate.source && (
-                        <span
-                          className={`inline-block px-2 py-1 ml-2 text-xs font-semibold rounded mb-2 ${
-                            candidate.source === "Fishial.AI"
-                              ? "bg-blue-100 text-blue-700 border border-blue-300"
-                              : "bg-gray-100 text-gray-600 border border-gray-300"
-                          }`}
-                        >
-                          {candidate.source === "Fishial.AI"
-                            ? "� Fishial.AI"
-                            : "📊 Fallback"}
-                        </span>
-                      )} */}
-
-                      {/* Scientific Name */}
-                      <h3 className="text-lg font-semibold italic text-gray-800">
-                        {species.scientificName}
-                      </h3>
-
-                      {/* Common Name */}
-                      <p className="text-sm text-gray-600">
-                        {species.commonNames?.join(", ") || "N/A"}
-                      </p>
-
-                      {/* Family */}
-                      <p className="text-xs text-gray-500 mt-1">
-                        Family: {species.taxonomicHierarchy.family}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* View Details Button */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSelectSpecies(species);
-                    }}
-                    className="w-full py-2 bg-cyan-50 text-cyan-600 rounded-lg hover:bg-cyan-100 transition-colors font-medium text-sm"
-                  >
-                    View Details
-                  </button>
+          ) : identificationResult ? (
+            <div className="space-y-3">
+              <div 
+                className="border border-gray-200 rounded-lg p-4 hover:shadow-md cursor-pointer" 
+                onClick={() => setShowDetails(true)}
+              >
+                <h3 className="text-lg font-semibold italic text-gray-800">
+                  {identificationResult.scientificName}
+                </h3>
+                <p className="text-sm text-gray-600">
+                  {identificationResult.commonNames?.join(', ') || 'N/A'}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Family: {identificationResult.taxonomicHierarchy?.family || 'N/A'}
+                </p>
+                <div className="mt-3 pt-3 border-t border-gray-100">
+                  <span className="inline-block px-2 py-1 bg-cyan-100 text-cyan-800 text-xs font-medium rounded-full">
+                    n8n Taxonomy
+                  </span>
                 </div>
-              ))}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <p>Identification result will appear here</p>
             </div>
           )}
         </div>
       </div>
 
       {/* Section 3: Species Details Panel */}
-      {showDetails && selectedCandidate && (
-        <div className="bg-white rounded-xl shadow-lg p-8 border-t-4 border-cyan-600">
-          {/* Species Header */}
-          <div className="mb-8 pb-8 border-b border-gray-200">
-            {(imagePreview || selectedCandidate?.speciesData?.images?.[0]) && (
-              <div className="mb-6">
-                <img
-                  src={imagePreview || selectedCandidate?.speciesData?.images?.[0]}
-                  alt="Reference"
-                  className="w-full max-h-96 object-contain rounded-lg shadow-md"
-                />
+      {showDetails && identificationResult && (
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden border-t-4 border-cyan-600 animate-fade-in">
+          
+          {/* Hero Section with Image and Basic Info */}
+          <div className="relative bg-gradient-to-br from-gray-900 to-gray-800 text-white">
+            <div className="absolute inset-0 opacity-20 bg-pattern-grid"></div>
+            
+            <div className="relative z-10 grid grid-cols-1 lg:grid-cols-3 gap-0 lg:gap-8">
+              {/* Image Container */}
+              <div className="lg:col-span-1 bg-black/30 min-h-[300px] lg:min-h-full flex items-center justify-center p-4">
+                {(imagePreview || identificationResult.uploadedImageUrl || identificationResult.imageUrl || identificationResult.images?.[0]) ? (
+                  <div className="relative group w-full">
+                    <img
+                      src={imagePreview || identificationResult.uploadedImageUrl || identificationResult.imageUrl || identificationResult.images?.[0]}
+                      alt={`${identificationResult.scientificName || 'Species'} - Representative image`}
+                      className="w-full h-full max-h-[400px] object-contain rounded-lg shadow-2xl border border-white/10 group-hover:scale-[1.02] transition-all duration-300"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="400"%3E%3Crect fill="%23374151" width="400" height="400"/%3E%3Ctext fill="%239CA3AF" font-family="Arial" font-size="18" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3EImage unavailable%3C/text%3E%3C/svg%3E';
+                      }}
+                      loading="lazy"
+                    />
+                    {(identificationResult.uploadedImageUrl || identificationResult.imageUrl) && (
+                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                        <button
+                          onClick={() => window.open(identificationResult.uploadedImageUrl || identificationResult.imageUrl, '_blank')}
+                          className="bg-white/90 hover:bg-white text-gray-900 px-4 py-2 rounded-lg text-sm font-medium opacity-0 group-hover:opacity-100 transition-all shadow-lg"
+                        >
+                          🔗 View Full Image
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="w-full max-h-[400px] flex items-center justify-center">
+                    <div className="text-center p-8">
+                      <div className="w-16 h-16 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                        <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                      <p className="text-white/60 font-medium">No representative image available</p>
+                      <p className="text-sm text-white/40 mt-1">Image will appear for species with reliable sources</p>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-            <h2 className="text-3xl font-bold italic text-gray-800 mb-2">
-              {selectedCandidate.scientificName}
-            </h2>
-            <p className="text-lg text-gray-600 mb-4">
-              {selectedCandidate.speciesData?.commonNames?.join(", ") || "N/A"}
-            </p>
-            <p className="text-sm text-gray-500 italic">
-              Source: Curated database (MVP)
-            </p>
+
+              {/* Header Info */}
+              <div className="lg:col-span-2 p-8 flex flex-col justify-center">
+                <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
+                  <div>
+                    <h2 className="text-4xl font-bold italic font-serif tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-blue-200 mb-2">
+                      {identificationResult.scientificName}
+                    </h2>
+                    <h3 className="text-xl text-gray-300 font-light">
+                      {identificationResult.commonNames?.join(", ") || "Common Name Unknown"}
+                    </h3>
+                  </div>
+                  {identificationResult.conservationStatus && (
+                    <div className={`px-4 py-2 rounded-full border ${
+                      identificationResult.conservationStatus === 'LC' ? 'bg-green-500/20 border-green-500 text-green-300' :
+                      identificationResult.conservationStatus === 'EN' ? 'bg-red-500/20 border-red-500 text-red-300' :
+                      identificationResult.conservationStatus === 'VU' ? 'bg-yellow-500/20 border-yellow-500 text-yellow-300' :
+                      'bg-gray-500/20 border-gray-500 text-gray-300'
+                    }`}>
+                      <span className="text-xs font-bold uppercase tracking-wider block text-center">Conservation Status</span>
+                      <span className="text-lg font-bold block text-center">{identificationResult.conservationStatus}</span>
+                    </div>
+                  )}
+                </div>
+
+                <p className="text-gray-300 leading-relaxed mb-6 border-l-4 border-cyan-500 pl-4 italic">
+                  {identificationResult.description || "No description available for this species."}
+                </p>
+
+                <div className="flex flex-wrap gap-3">
+                  {identificationResult.wormsMetadata?.isMarine && (
+                    <span className="px-3 py-1 bg-blue-900/50 text-blue-200 rounded-full text-sm flex items-center gap-2 border border-blue-700/50">
+                      <BiWater /> Marine
+                    </span>
+                  )}
+                  {identificationResult.wormsMetadata?.isFreshwater && (
+                    <span className="px-3 py-1 bg-green-900/50 text-green-200 rounded-full text-sm flex items-center gap-2 border border-green-700/50">
+                      <FiDroplet /> Freshwater
+                    </span>
+                  )}
+                  {identificationResult.wormsMetadata?.isBrackish && (
+                    <span className="px-3 py-1 bg-amber-900/50 text-amber-200 rounded-full text-sm flex items-center gap-2 border border-amber-700/50">
+                      <FiActivity /> Brackish
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Taxonomic Classification */}
-          <div className="mb-6">
-            <h3 className="text-xl font-bold text-gray-800 mb-3 flex items-center gap-2">
-              <span className="w-1 h-6 bg-cyan-600 rounded"></span>
-              Taxonomic Classification
-            </h3>
-            <div className="bg-gray-50 rounded-lg p-4">
-              {selectedCandidate.speciesData.taxonomicHierarchy ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {Object.entries(
-                    selectedCandidate.speciesData.taxonomicHierarchy
-                  ).map(([rank, value]) => (
-                    <div key={rank}>
-                      <span className="text-xs text-gray-500 uppercase">
-                        {rank}
-                      </span>
-                      <p className="text-sm font-medium text-gray-800">
-                        {value}
+          <div className="p-8 bg-gray-50">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              
+              {/* Left Column: Taxonomy & External Links */}
+              <div className="space-y-8">
+                {/* Taxonomy Card */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                  <div className="bg-cyan-50 px-6 py-4 border-b border-cyan-100 flex items-center gap-2">
+                    <FiLayers className="text-cyan-600" />
+                    <h3 className="font-bold text-gray-800">Taxonomic Hierarchy</h3>
+                  </div>
+                  <div className="p-6">
+                    {identificationResult.taxonomicHierarchy ? (
+                      <div className="relative border-l-2 border-gray-200 ml-3 space-y-4 py-2">
+                        {['kingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species'].map((rank) => {
+                          const value = identificationResult.taxonomicHierarchy[rank];
+                          if (!value) return null;
+                          return (
+                            <div key={rank} className="relative pl-6 group">
+                              <span className="absolute -left-[9px] top-1.5 w-4 h-4 rounded-full bg-white border-2 border-gray-300 group-hover:border-cyan-500 transition-colors"></span>
+                              <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-0.5">{rank}</p>
+                              <p className="text-gray-800 font-medium group-hover:text-cyan-700 transition-colors">{value}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-gray-500 italic">Taxonomy data unavailable</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* External Links Card */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                  <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+                    <FiExternalLink className="text-gray-600" />
+                    <h3 className="font-bold text-gray-800">External Resources</h3>
+                  </div>
+                  <div className="p-6 flex flex-col gap-3">
+                    {identificationResult.externalLinks?.wikipedia && (
+                      <a 
+                        href={identificationResult.externalLinks.wikipedia} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors group"
+                      >
+                        <span className="font-medium text-gray-700 group-hover:text-gray-900">Wikipedia</span>
+                        <FiExternalLink className="text-gray-400 group-hover:text-gray-600" />
+                      </a>
+                    )}
+                    {identificationResult.wormsMetadata?.url && (
+                      <a 
+                        href={identificationResult.wormsMetadata.url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors group"
+                      >
+                        <span className="font-medium text-blue-700 group-hover:text-blue-900">WoRMS Database</span>
+                        <FiExternalLink className="text-blue-400 group-hover:text-blue-600" />
+                      </a>
+                    )}
+                    {identificationResult.externalLinks?.fishbase && (
+                      <a 
+                        href={identificationResult.externalLinks.fishbase} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between p-3 rounded-lg bg-cyan-50 hover:bg-cyan-100 transition-colors group"
+                      >
+                        <span className="font-medium text-cyan-700 group-hover:text-cyan-900">FishBase</span>
+                        <FiExternalLink className="text-cyan-400 group-hover:text-cyan-600" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Middle & Right Columns: Details */}
+              <div className="lg:col-span-2 space-y-8">
+                
+                {/* Morphology & Ecology Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Morphology */}
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2 border-b pb-2">
+                      <MdOutlineScience className="text-purple-600 text-xl" />
+                      Morphology
+                    </h3>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 text-gray-600">
+                          <FaRulerHorizontal className="text-gray-400" />
+                          <span>Max Length</span>
+                        </div>
+                        <span className="font-semibold text-gray-800">
+                          {identificationResult.morphology?.maxLength ? `${identificationResult.morphology.maxLength} cm` : 'N/A'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 text-gray-600">
+                          <FaWeightHanging className="text-gray-400" />
+                          <span>Max Weight</span>
+                        </div>
+                        <span className="font-semibold text-gray-800">
+                          {identificationResult.morphology?.maxWeight ? `${identificationResult.morphology.maxWeight} kg` : 'N/A'}
+                        </span>
+                      </div>
+                      
+                      {identificationResult.morphology?.distinctiveFeatures && (
+                        <div className="mt-4">
+                          <p className="text-sm font-semibold text-gray-500 mb-2 uppercase">Distinctive Features</p>
+                          <ul className="list-disc list-inside space-y-1 text-gray-700 text-sm">
+                            {identificationResult.morphology.distinctiveFeatures.map((feature, idx) => (
+                              <li key={idx}>{feature}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Ecology */}
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                    <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2 border-b pb-2">
+                      <FiGlobe className="text-green-600 text-xl" />
+                      Ecology
+                    </h3>
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex items-center gap-2 text-gray-600 mb-1">
+                          <FiTarget className="text-gray-400" />
+                          <span className="font-medium">Depth Range</span>
+                        </div>
+                        <p className="text-gray-800 pl-6">
+                          {identificationResult.ecology?.depthRange?.min || 0} - {identificationResult.ecology?.depthRange?.max || '?'} meters
+                        </p>
+                      </div>
+                      
+                      <div>
+                        <div className="flex items-center gap-2 text-gray-600 mb-1">
+                          <FiActivity className="text-gray-400" />
+                          <span className="font-medium">Diet</span>
+                        </div>
+                        <p className="text-gray-700 text-sm pl-6 leading-relaxed">
+                          {identificationResult.ecology?.diet || "Dietary information not available."}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Habitat & Distribution (Full Width) */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2 border-b pb-2">
+                    <FiMapPin className="text-red-500 text-xl" />
+                    Habitat & Distribution
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h4 className="font-semibold text-gray-700 mb-2">Habitat</h4>
+                      <p className="text-gray-600 text-sm leading-relaxed">
+                        {identificationResult.habitat || "Habitat information not available."}
                       </p>
                     </div>
-                  ))}
+                    <div>
+                      <h4 className="font-semibold text-gray-700 mb-2">Distribution</h4>
+                      <p className="text-gray-600 text-sm leading-relaxed">
+                        {identificationResult.distribution || "Distribution information not available."}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {identificationResult.ecology?.behavior && (
+                    <div className="mt-6 pt-6 border-t border-gray-100">
+                      <h4 className="font-semibold text-gray-700 mb-2">Behavior</h4>
+                      <p className="text-gray-600 text-sm leading-relaxed">
+                        {identificationResult.ecology.behavior}
+                      </p>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <p className="text-gray-500 text-sm">
-                  Taxonomic classification data not available
-                </p>
-              )}
-            </div>
-          </div>
 
-          {/* Physical Characteristics */}
-          <div className="mb-6">
-            <h3 className="text-xl font-bold text-gray-800 mb-3 flex items-center gap-2">
-              <span className="w-1 h-6 bg-blue-600 rounded"></span>
-              Physical Characteristics
-            </h3>
-            <p className="text-gray-700 leading-relaxed">
-              {selectedCandidate.speciesData.description ||
-                "Physical characteristics data not available."}
-            </p>
-          </div>
-
-          {/* Habitat & Distribution */}
-          <div className="mb-6">
-            <h3 className="text-xl font-bold text-gray-800 mb-3 flex items-center gap-2">
-              <span className="w-1 h-6 bg-teal-600 rounded"></span>
-              Habitat & Distribution
-            </h3>
-            <div className="space-y-2 text-gray-700">
-              <p>
-                <strong>Habitat:</strong>{" "}
-                {selectedCandidate.speciesData.habitat || "N/A"}
-              </p>
-              <p>
-                <strong>Distribution:</strong>{" "}
-                {selectedCandidate.speciesData.distribution || "N/A"}
-              </p>
-              {selectedCandidate.speciesData.wormsMetadata && (
-                <p>
-                  <strong>Environment:</strong>{" "}
-                  {[
-                    selectedCandidate.speciesData.wormsMetadata.isMarine &&
-                      "Marine",
-                    selectedCandidate.speciesData.wormsMetadata.isBrackish &&
-                      "Brackish",
-                    selectedCandidate.speciesData.wormsMetadata.isFreshwater &&
-                      "Freshwater",
-                  ]
-                    .filter(Boolean)
-                    .join(", ") || "N/A"}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Additional Information */}
-          <div className="mb-8">
-            <h3 className="text-xl font-bold text-gray-800 mb-3 flex items-center gap-2">
-              <span className="w-1 h-6 bg-purple-600 rounded"></span>
-              Additional Information
-            </h3>
-            <div className="space-y-2 text-gray-700">
-              {selectedCandidate.speciesData.conservationStatus && (
-                <p>
-                  <strong>Conservation Status:</strong>{" "}
-                  {selectedCandidate.speciesData.conservationStatus}
-                </p>
-              )}
-              <p>
-                <strong>Taxonomic Status:</strong>{" "}
-                {selectedCandidate.speciesData.taxonomicStatus || "N/A"}
-              </p>
-              {selectedCandidate.speciesData.wormsMetadata?.authority && (
-                <p>
-                  <strong>Authority:</strong>{" "}
-                  {selectedCandidate.speciesData.wormsMetadata.authority}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* External Links */}
-          {(selectedCandidate.speciesData.wormsMetadata?.url ||
-            selectedCandidate.speciesData.externalLinks) && (
-            <div className="mb-8">
-              <h3 className="text-xl font-bold text-gray-800 mb-3">
-                External Links
-              </h3>
-              <div className="flex flex-wrap gap-3">
-                {selectedCandidate.speciesData.wormsMetadata?.url && (
-                  <a
-                    href={selectedCandidate.speciesData.wormsMetadata.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm font-medium"
-                  >
-                    WoRMS
-                  </a>
+                {/* Economic Importance */}
+                {identificationResult.economicImportance && (
+                  <div className="bg-amber-50 rounded-xl border border-amber-100 p-6">
+                    <h3 className="text-lg font-bold text-amber-800 mb-2">Economic Importance</h3>
+                    <p className="text-amber-900/80 text-sm">
+                      {identificationResult.economicImportance}
+                    </p>
+                  </div>
                 )}
-                {selectedCandidate.speciesData.externalLinks?.wikipedia && (
-                  <a
-                    href={selectedCandidate.speciesData.externalLinks.wikipedia}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+
+                {/* Action Buttons */}
+                <div className="flex flex-wrap gap-4 pt-4">
+                  <button
+                    onClick={handleExportPDF}
+                    disabled={exporting}
+                    className={`flex-1 px-6 py-4 rounded-xl font-bold text-white shadow-lg transition-all transform hover:-translate-y-1 ${
+                      exporting
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : "bg-gradient-to-r from-cyan-600 to-blue-600 hover:shadow-cyan-500/30"
+                    } flex items-center justify-center gap-3`}
                   >
-                    Wikipedia
-                  </a>
-                )}
-                {selectedCandidate.speciesData.externalLinks?.gbif && (
-                  <a
-                    href={selectedCandidate.speciesData.externalLinks.gbif}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors text-sm font-medium"
+                    {exporting ? (
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+                    ) : (
+                      <FiDownload className="text-xl" />
+                    )}
+                    {exporting ? "Generating Report..." : "Download Species Report"}
+                  </button>
+
+                  <button
+                    onClick={handleTryAnother}
+                    className="px-6 py-4 rounded-xl font-bold text-gray-700 bg-white border border-gray-200 shadow-sm hover:bg-gray-50 hover:border-gray-300 transition-all"
                   >
-                    GBIF
-                  </a>
-                )}
+                    Identify Another
+                  </button>
+                </div>
+
               </div>
             </div>
-          )}
-
-          {/* Actions */}
-          <div className="flex flex-wrap gap-4">
-            <button
-              onClick={handleExportPDF}
-              disabled={exporting}
-              className={`flex-1 md:flex-none px-6 py-3 rounded-lg font-semibold transition-all duration-300 flex items-center justify-center gap-2 ${
-                exporting
-                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                  : "bg-gradient-to-r from-cyan-600 to-blue-600 text-white hover:shadow-lg"
-              }`}
-            >
-              {exporting ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <FiDownload />
-                  Export as PDF
-                </>
-              )}
-            </button>
-
-            <button
-              onClick={handleTryAnother}
-              className="flex-1 md:flex-none px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-semibold"
-            >
-              Try Another Image
-            </button>
           </div>
         </div>
       )}
@@ -820,3 +855,7 @@ const IdentifyTab = ({ onSelectSpecies, refreshTrigger }) => {
 };
 
 export default IdentifyTab;
+
+
+
+

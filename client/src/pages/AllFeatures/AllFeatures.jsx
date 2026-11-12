@@ -39,7 +39,7 @@ const AllFeatures = () => {
         
         <div className="relative z-10 max-w-7xl mx-auto px-4 text-center">
           <div className="flex items-center justify-center mb-6" data-animate>
-            <MarineIcon type="submarine" size={64} color="#0891B2" animated />
+            <MarineIcon type="submarine" className='h-50 w-50' color="#0891B2" animated />
           </div>
           
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold bg-gradient-to-r from-cyan-600 via-blue-600 to-teal-600 bg-clip-text text-transparent mb-6" data-animate>
@@ -661,7 +661,7 @@ const AllFeatures = () => {
         
         <div className="relative z-10 max-w-4xl mx-auto px-4 text-center">
           <div className="flex items-center justify-center mb-6" data-animate>
-            <MarineIcon type="submarine" size={64} color="white" animated />
+            <MarineIcon type="submarine" className='h-50 w-50' color="white" animated />
           </div>
           
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6" data-animate>

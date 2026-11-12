@@ -23,6 +23,87 @@ An intelligent platform for marine biodiversity monitoring, species identificati
 
 ---
 
+## 🔗 n8n Taxonomy Webhook Integration
+
+The Taxonomic Management module uses an external n8n webhook for dynamic species identification. This allows the platform to leverage custom AI workflows, external APIs, and data enrichment pipelines.
+
+### How It Works
+
+1. User enters a species name or uploads an image in the Taxonomic Management module
+2. Backend uploads image to Cloudinary (if provided) and gets URL
+3. Backend sends species name or image URL to configured n8n webhook
+4. n8n workflow processes the input (AI identification, API calls, data enrichment)
+5. n8n returns comprehensive taxonomy data (see format below)
+6. Backend saves species data to MongoDB with user reference
+7. Frontend displays enriched species information
+
+### Setup Instructions
+
+1. **Create n8n Workflow:**
+   - Set up an n8n instance (cloud or self-hosted)
+   - Create a new workflow with a Webhook trigger node
+   - Implement your taxonomy identification logic (e.g., call iNaturalist API, use AI models, query databases)
+   - Add a Respond to Webhook node to return data
+
+2. **Configure Webhook URL:**
+   - Copy the webhook URL from your n8n workflow
+   - Add to `.env` file: `N8N_TAXONOMY_WEBHOOK_URL=https://your-n8n-instance.com/webhook/taxonomy-identify`
+
+3. **Webhook Input Format:**
+   ```json
+   {
+     "input": "Gadus morhua" // or "https://res.cloudinary.com/.../fish.jpg"
+   }
+   ```
+
+4. **Required Webhook Output Format:**
+   ```json
+   {
+     "scientificName": "Gadus morhua",
+     "commonNames": ["Atlantic Cod", "Cod"],
+     "taxonomicHierarchy": {
+       "kingdom": "Animalia",
+       "phylum": "Chordata",
+       "class": "Actinopterygii",
+       "order": "Gadiformes",
+       "family": "Gadidae",
+       "genus": "Gadus",
+       "species": "Gadus morhua"
+     },
+     "description": "The Atlantic cod is a benthopelagic fish...",
+     "habitat": "Cold waters of the North Atlantic...",
+     "distribution": "North Atlantic Ocean...",
+     "morphology": {
+       "maxLength": 200,
+       "maxWeight": 96,
+       "distinctiveFeatures": ["Single barbel on chin", ...]
+     },
+     "ecology": {
+       "diet": "Carnivorous, feeding on smaller fish...",
+       "behavior": "Benthopelagic, forming large schools...",
+       "depthRange": { "min": 0, "max": 600 }
+     },
+     "conservationStatus": "Vulnerable",
+     "economicImportance": "Highly important commercial species...",
+     "imageUrl": "https://images.unsplash.com/...",
+     "thumbnailUrl": "https://images.unsplash.com/...",
+     "externalLinks": {
+       "wikipedia": "https://en.wikipedia.org/wiki/Atlantic_cod",
+       "fishbase": "https://www.fishbase.se/summary/69"
+     }
+   }
+   ```
+
+### Troubleshooting
+
+- **Timeout Errors:** Increase `N8N_TAXONOMY_TIMEOUT` in `.env` (default: 60 seconds)
+- **Invalid Response:** Ensure n8n webhook returns data in the exact format above
+- **Webhook Unreachable:** Check n8n instance is running and URL is correct
+- **Missing Fields:** All fields except `imageUrl`, `thumbnailUrl`, and `externalLinks` are required
+- **Authentication Errors:** User must be logged in to use species identification
+
+---
+
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -110,12 +191,12 @@ CLOUDINARY_API_SECRET=your_api_secret
 2. Go to Dashboard → API Keys
 3. Copy Cloud Name, API Key, and API Secret
 
-#### Species Identification (Optional - For Future AI Integration)
+#### Species Identification (n8n Taxonomy Webhook - Required)
 ```env
-# Not required for MVP - static database is used
-# Uncomment and configure when enabling AI-powered identification
-# FISHIAL_CLIENT_ID=your_fishial_client_id
-# FISHIAL_CLIENT_SECRET=your_fishial_client_secret
+# Required for Taxonomic Management module
+# See "n8n Taxonomy Webhook Integration" section above for setup details
+N8N_TAXONOMY_WEBHOOK_URL=https://your-n8n-instance.com/webhook/taxonomy-identify
+N8N_TAXONOMY_TIMEOUT=60000
 ```
 
 **Note:** The current MVP uses a static species database. API keys for Fishial.AI are optional and will be used when AI-powered identification features are enabled in the future.
@@ -161,47 +242,114 @@ The current implementation uses a static species database located at `client/src
 - `getSpeciesByScientificName(name)` - Get species by exact scientific name
 - `getAllSpeciesNames()` - Get all species names for autocomplete
 
-### Species Identification API (Backend - Currently Not Used)
+### Species Identification API (Backend - Active, Powered by n8n)
 
-The backend has API endpoints for image-based identification that will be used when AI features are enabled:
+The backend provides dual-input species identification powered by the n8n taxonomy webhook:
 
 #### POST `/api/taxonomy/identify`
-Upload an image for species identification (Future AI Integration).
+Identify species by name (text) or image. This endpoint is **actively used** and integrates with the n8n taxonomy webhook for real-time species identification.
 
 **Request:**
 - Method: `POST`
-- Content-Type: `multipart/form-data`
-- Body: `image` (file)
+- Content-Type: `multipart/form-data` (for image) or `application/json` (for name)
 - Authentication: Required (JWT token)
+
+**Body Parameters (choose one):**
+- `speciesName` (string): Species name (scientific or common) for text-based identification
+- `speciesImage` (file): Image file for image-based identification
 
 **Response:**
 ```json
 {
   "success": true,
-  "message": "Species identification completed successfully",
+  "message": "Species identified successfully",
   "data": {
-    "uploadedImageUrl": "https://res.cloudinary.com/...",
-    "identificationResults": [
-      {
-        "scientificName": "Thunnus albacares",
-        "commonName": "Yellowfin Tuna",
-        "speciesData": {
-          "scientificName": "Thunnus albacares",
-          "commonNames": ["Yellowfin Tuna", "Ahi"],
-          "taxonomicHierarchy": { ... },
-          "morphology": { ... },
-          "ecology": { ... },
-          "habitat": "Pelagic-oceanic",
-          "distribution": "Worldwide in tropical and subtropical seas"
-        }
-      }
-    ]
+    "species": {
+      "_id": "507f1f77bcf86cd799439011",
+      "scientificName": "Thunnus albacares",
+      "commonNames": ["Yellowfin Tuna", "Ahi"],
+      "taxonomicHierarchy": {
+        "kingdom": "Animalia",
+        "phylum": "Chordata",
+        "class": "Actinopterygii",
+        "order": "Perciformes",
+        "family": "Scombridae",
+        "genus": "Thunnus"
+      },
+      "morphology": {
+        "maxLength": "239 cm",
+        "commonLength": "150 cm",
+        "maxWeight": "200 kg",
+        "bodyShape": "Fusiform"
+      },
+      "ecology": {
+        "trophicLevel": 4.5,
+        "feedingHabits": "Carnivorous",
+        "reproductionMode": "Oviparous"
+      },
+      "habitat": "Pelagic-oceanic",
+      "distribution": "Worldwide in tropical and subtropical seas",
+      "conservationStatus": "NT",
+      "images": ["https://res.cloudinary.com/..."],
+      "uploadedImageUrl": "https://res.cloudinary.com/...",
+      "thumbnailUrl": "https://res.cloudinary.com/...",
+      "identificationSource": "n8n_webhook",
+      "identificationMetadata": {
+        "timestamp": "2025-01-15T12:34:56.789Z",
+        "identifiedBy": "507f191e810c19729de860ea"
+      },
+      "createdBy": "507f191e810c19729de860ea",
+      "createdAt": "2025-01-15T12:34:56.789Z",
+      "updatedAt": "2025-01-15T12:34:56.789Z"
+    },
+    "isNew": false,
+    "source": "n8n_webhook"
   }
 }
 ```
 
-#### GET `/api/taxonomy/history`
-Retrieve identification history for authenticated user (Future feature).
+**Notes:**
+- The `isNew` field indicates whether this species was newly created (true) or already existed in the database (false)
+- The `source` field shows the identification method used (currently "n8n_webhook")
+- For image-based identification, `uploadedImageUrl` and `thumbnailUrl` are included
+- The `createdBy` field preserves the original user who first identified the species
+
+#### GET `/api/taxonomy/identify/history`
+Retrieve identification history for the authenticated user with pagination support.
+
+**Request:**
+- Method: `GET`
+- Authentication: Required (JWT token)
+
+**Query Parameters:**
+- `page` (number, optional): Page number for pagination (default: 1)
+- `limit` (number, optional): Number of results per page (default: 10, max: 50)
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Identification history retrieved successfully",
+  "data": {
+    "species": [
+      {
+        "_id": "507f1f77bcf86cd799439011",
+        "scientificName": "Thunnus albacares",
+        "commonNames": ["Yellowfin Tuna", "Ahi"],
+        "images": ["https://res.cloudinary.com/..."],
+        "identificationSource": "n8n_webhook",
+        "createdAt": "2025-01-15T12:34:56.789Z"
+      }
+    ],
+    "pagination": {
+      "currentPage": 1,
+      "totalPages": 5,
+      "totalItems": 47,
+      "itemsPerPage": 10
+    }
+  }
+}
+```
 
 #### POST `/api/taxonomy/export-pdf`
 Generate PDF report for species data (currently uses static database).

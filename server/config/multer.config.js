@@ -67,7 +67,7 @@ const sequenceFileFilter = (req, file, cb) => {
   }
 };
 
-// File filter for data files - accept CSV, JSON, TXT
+// File filter for data files - accept CSV, JSON, XML, netCDF
 const dataFileFilter = (req, file, cb) => {
   // Allowed data file MIME types
   const allowedMimeTypes = [
@@ -75,10 +75,14 @@ const dataFileFilter = (req, file, cb) => {
     "application/csv",
     "application/json",
     "text/plain",
+    "text/xml",
+    "application/xml",
+    "application/x-netcdf",
+    "application/octet-stream" // For .nc files
   ];
 
   // Allowed file extensions
-  const allowedExtensions = [".csv", ".json", ".txt"];
+  const allowedExtensions = [".csv", ".json", ".txt", ".xml", ".nc"];
 
   // Check MIME type or extension
   const fileExt = file.originalname

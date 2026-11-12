@@ -4,6 +4,8 @@ dotenv.config();
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import morgan from "morgan";
+import http from "http";
+import setupSocket from "./socketHandler.js";
 
 import authRoute from "./routes/auth.route.js";
 import mapRoute from './routes/map.route.js';
@@ -28,11 +30,12 @@ import { getRedisClient, isConnected as isRedisConnected, disconnect as disconne
 import connectDB from "./config/db.js";
 import { validateProviderConfig, getProviderStatus } from './config/speciesProviders.config.js';
 
-
-
-
-
 const app = express();
+const server = http.createServer(app);
+
+// Initialize Socket.io
+setupSocket(server);
+
 const PORT = process.env.PORT || 5000;
 
 app.use(express.json());
@@ -57,9 +60,6 @@ if (process.env.NODE_ENV === 'development') {
 } else {
   app.use(morgan('combined')); // Standard Apache combined log format for production
 }
-
-// Apply general rate limiter to all routes
-// app.use(generalLimiter);
 
 let isConnected = false;
 
@@ -96,7 +96,7 @@ app.use('/api/biodiversity', strictLimiter, cacheMiddleware(600000), biodiversit
 app.use('/api/otolith', otolithRoute);
 app.use('/api/taxonomy', taxonomyRoute);
 app.use('/api/edna', ednaRoute); // eDNA Processing module
-app.use('/api/data', uploadLimiter, dataRoute); // Data ingestion endpoints with upload rate limit
+app.use('/api/data', dataRoute); // Data ingestion endpoints
 app.use('/api/analytics', analyticsLimiter, analyticsRoute); // AI-powered analytics endpoints with compute rate limit
 app.use('/api/ai', aiRoute); // AI chat and text generation with strict rate limit
 app.use('/api/community', communityRoute); // Community discussion forum with rate limiting on posts
@@ -142,17 +142,10 @@ app.get("/api/health/providers", (req, res) => {
   });
 });
 
-app.listen(PORT, async () => {
+server.listen(PORT, async () => {
   // await connectDB();
   console.log(`Server is running on port ${PORT}`);
   console.log(`http://localhost:${PORT}`);
-  
-  // Log Redis connection status on startup
-  // if (isRedisConnected()) {
-  //   console.log('✅ Redis cache is active');
-  // } else {
-  //   console.log('📝 Using in-memory cache (Redis not available)');
-  // }
 });
 
 // Graceful shutdown handlers

@@ -74,6 +74,7 @@ const speciesSchema = new mongoose.Schema(
       gbif: String,
       fishbase: String,
       iNaturalist: String,
+      itis: String,
     },
     // Additional fields for marine species
     morphology: {
@@ -94,6 +95,48 @@ const speciesSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    /**
+     * User who added/identified this species
+     * Reference to User model for tracking identification history
+     */
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: false, // Not required for backward compatibility with existing records
+    },
+    /**
+     * Original uploaded image URL from Cloudinary
+     * Only populated if identification was performed via image upload
+     */
+    uploadedImageUrl: {
+      type: String,
+      default: null,
+    },
+    /**
+     * Thumbnail version of uploaded image
+     * Optimized smaller version for UI display
+     */
+    thumbnailUrl: {
+      type: String,
+      default: null,
+    },
+    /**
+     * Source of species identification
+     * Tracks how this species data was obtained
+     */
+    identificationSource: {
+      type: String,
+      enum: ["n8n-webhook", "manual", "import", "microservice-langgraph"],
+      default: "n8n-webhook",
+    },
+    /**
+     * Raw metadata from identification process
+     * Stores original n8n webhook response or other source data for debugging/auditing
+     */
+    identificationMetadata: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -106,6 +149,7 @@ speciesSchema.index({ "commonNames": 1 });
 speciesSchema.index({ "taxonomicHierarchy.family": 1 });
 speciesSchema.index({ "taxonomicHierarchy.genus": 1 });
 speciesSchema.index({ "wormsMetadata.aphiaId": 1 });
+speciesSchema.index({ createdBy: 1, createdAt: -1 }); // For user-specific identification history queries
 
 const Species = mongoose.model("Species", speciesSchema);
 

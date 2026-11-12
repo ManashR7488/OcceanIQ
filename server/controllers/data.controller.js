@@ -5,6 +5,16 @@ import {
   validateAndInsertObservations,
   validateAndInsertOceanographicData,
 } from "../services/dataIngestion.service.js";
+import UserDataset from "../models/UserDataset.model.js";
+import axios from "axios";
+
+/**
+ * Sanitize user ID for ChromaDB compatibility
+ * Removes special characters and converts to lowercase
+ */
+const sanitizeUserId = (userId) => {
+  return userId.toString().toLowerCase().replace(/[^a-z0-9]/g, '');
+};
 
 /**
  * Helper to parse uploaded file or request body data
@@ -405,6 +415,103 @@ export const uploadOceanographicData = async (req, res) => {
       error: "Upload failed",
       message: error.message || "An error occurred during data upload",
       details: error.toString(),
+    });
+  }
+};
+
+/**
+ * Get all datasets for authenticated user
+ * GET /api/data/datasets
+ */
+export const getUserDatasets = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const datasets = await UserDataset.find({ userId })
+      .sort({ uploadDate: -1 })
+      .lean();
+
+    return res.json({
+      success: true,
+      datasets: datasets.map(ds => ({
+        id: ds._id.toString(),
+        filename: ds.filename,
+        fileType: ds.fileType,
+        uploadDate: ds.uploadDate,
+        fileSize: ds.fileSize,
+        metadata: {
+          ...ds.metadata,
+          documentId: ds.documentId
+        }
+      }))
+    });
+  } catch (error) {
+    console.error("Get user datasets error:", error);
+    return res.status(500).json({
+      error: "Failed to fetch datasets",
+      message: error.message
+    });
+  }
+};
+
+/**
+ * Delete user dataset from MongoDB and vector store
+ * DELETE /api/data/datasets/:id
+ */
+export const deleteUserDataset = async (req, res) => {
+  try {
+    const datasetId = req.params.id;
+    const userId = req.user._id;
+
+    // Find dataset
+    const dataset = await UserDataset.findById(datasetId);
+
+    if (!dataset) {
+      return res.status(404).json({
+        error: "Dataset not found"
+      });
+    }
+
+    // Ownership check
+    if (dataset.userId.toString() !== userId.toString()) {
+      return res.status(403).json({
+        error: "Unauthorized",
+        message: "You do not have permission to delete this dataset"
+      });
+    }
+
+    // Call microservice to delete from vector store
+    const microserviceUrl = process.env.MICROSERVICE_URL || 'http://localhost:8000';
+    
+    const sanitizedUserId = sanitizeUserId(userId);
+    console.log('[DeleteDataset] Sanitizing user ID:', { userId: userId.toString(), sanitized: sanitizedUserId });
+    
+    try {
+      await axios.delete(`${microserviceUrl}/data-delete`, {
+        data: {
+          user_id: sanitizedUserId,
+          document_id: dataset.documentId
+        },
+        timeout: 10000
+      });
+    } catch (microserviceError) {
+      console.error("Microservice delete error:", microserviceError.message);
+      // Continue with MongoDB deletion even if vector store deletion fails
+    }
+
+    // Delete from MongoDB
+    await dataset.deleteOne();
+
+    return res.json({
+      success: true,
+      message: "Dataset deleted",
+      deletedCount: 1
+    });
+  } catch (error) {
+    console.error("Delete dataset error:", error);
+    return res.status(500).json({
+      error: "Failed to delete dataset",
+      message: error.message
     });
   }
 };
